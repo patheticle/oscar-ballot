@@ -281,17 +281,21 @@ export default function App() {
   };
 
   const calculateScore = () => {
-    if (!ballotData) return { correct: 0, total: 0 };
+    if (!ballotData) return { correct: 0, heartCorrect: 0, total: 0 };
     let correct = 0;
+    let heartCorrect = 0;
     let total = Object.keys(winners).length;
     
     Object.entries(winners).forEach(([category, winner]) => {
       if (ballotData.picks[category]?.willWin === winner) {
         correct++;
       }
+      if (ballotData.picks[category]?.wantWin === winner) {
+        heartCorrect++;
+      }
     });
     
-    return { correct, total };
+    return { correct, heartCorrect, total };
   };
 
   if (loading) {
@@ -307,7 +311,7 @@ export default function App() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 flex flex-col items-center justify-center p-6">
         <div className="text-center max-w-md">
-          <OscarStatuette className="h-32 text-amber-500 mx-auto mb-4" />
+          <div className="text-8xl mb-4">🏆</div>
           <h1 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-600 via-orange-500 to-rose-500 mb-2" style={{ fontFamily: 'system-ui' }}>
             Oscar Ballot
           </h1>
@@ -553,9 +557,16 @@ export default function App() {
                 <p className="text-sm text-amber-600">Tap winners as they're announced</p>
               </div>
               {score.total > 0 && (
-                <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 py-2 rounded-xl">
-                  <span className="text-2xl font-black">{score.correct}</span>
-                  <span className="text-sm font-medium">/{score.total}</span>
+                <div className="text-right">
+                  <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 py-2 rounded-xl">
+                    <span className="text-2xl font-black">{score.correct}</span>
+                    <span className="text-sm font-medium">/{score.total}</span>
+                  </div>
+                  {score.total >= 10 && score.heartCorrect > 0 && (
+                    <div className="text-xs text-rose-500 mt-1">
+                      ❤️ {score.heartCorrect} heart pick{score.heartCorrect !== 1 ? 's' : ''} won
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -569,6 +580,7 @@ export default function App() {
             const winner = winners[category];
             const isCorrect = winner && userPicks.willWin === winner;
             const isWrong = winner && userPicks.willWin && userPicks.willWin !== winner;
+            const heartCorrect = isWrong && userPicks.wantWin === winner;
             
             return (
               <div 
@@ -585,7 +597,8 @@ export default function App() {
                     {category}
                   </span>
                   {isCorrect && <span className="text-green-500 text-xl">✓ Correct!</span>}
-                  {isWrong && <span className="text-rose-400 text-sm">✗ Wrong</span>}
+                  {isWrong && !heartCorrect && <span className="text-rose-400 text-sm">✗ Wrong</span>}
+                  {heartCorrect && <span className="text-rose-400 text-sm">✗ Wrong, but your heart was right! ❤️</span>}
                 </div>
                 
                 <div className="p-4 space-y-2">
