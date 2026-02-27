@@ -181,7 +181,7 @@ export default function App() {
           
           if (data && !error) {
             setBallotData({
-              name: data.name,
+              name: data.voter_name,
               picks: data.picks
             });
             setBallotId(id);
@@ -237,7 +237,7 @@ export default function App() {
     const id = ballotId || generateId();
     const ballotPayload = {
       id,
-      name: voterName,
+      voter_name: voterName,
       picks,
       created_at: new Date().toISOString()
     };
