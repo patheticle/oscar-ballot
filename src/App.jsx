@@ -1,0 +1,685 @@
+import React, { useState, useEffect } from 'react';
+import { supabase } from './supabase';
+
+const CATEGORIES = {
+  'Best Picture': [
+    'Bugonia', 'F1', 'Frankenstein', 'Hamnet', 'Marty Supreme',
+    'One Battle After Another', 'The Secret Agent', 'Sentimental Value', 'Sinners', 'Train Dreams'
+  ],
+  'Best Director': [
+    'Chloé Zhao – Hamnet', 'Josh Safdie – Marty Supreme', 'Paul Thomas Anderson – One Battle After Another',
+    'Joachim Trier – Sentimental Value', 'Ryan Coogler – Sinners'
+  ],
+  'Best Actress': [
+    'Jessie Buckley – Hamnet', 'Rose Byrne – If I Had Legs I\'d Kick You', 'Kate Hudson – Song Sung Blue',
+    'Renate Reinsve – Sentimental Value', 'Emma Stone – Bugonia'
+  ],
+  'Best Actor': [
+    'Timothée Chalamet – Marty Supreme', 'Leonardo DiCaprio – One Battle After Another',
+    'Ethan Hawke – Blue Moon', 'Michael B. Jordan – Sinners', 'Wagner Moura – The Secret Agent'
+  ],
+  'Best Supporting Actress': [
+    'Elle Fanning – Sentimental Value', 'Inga Ibsdotter Lilleaas – Sentimental Value',
+    'Amy Madigan – Weapons', 'Wunmi Mosaku – Sinners', 'Teyana Taylor – One Battle After Another'
+  ],
+  'Best Supporting Actor': [
+    'Benicio Del Toro – One Battle After Another', 'Jacob Elordi – Frankenstein',
+    'Delroy Lindo – Sinners', 'Sean Penn – One Battle After Another', 'Stellan Skarsgård – Sentimental Value'
+  ],
+  'Best Original Screenplay': [
+    'Blue Moon', 'It Was Just an Accident', 'Marty Supreme', 'Sentimental Value', 'Sinners'
+  ],
+  'Best Adapted Screenplay': [
+    'Bugonia', 'Frankenstein', 'Hamnet', 'One Battle After Another', 'Train Dreams'
+  ],
+  'Best Animated Feature': [
+    'Arco', 'Elio', 'KPop Demon Hunters', 'Little Amélie or the Character of Rain', 'Zootopia 2'
+  ],
+  'Best International Feature': [
+    'It Was Just an Accident (France)', 'The Secret Agent (Brazil)', 'Sentimental Value (Norway)',
+    'Sirāt (Spain)', 'The Voice of Hind Rajab (Tunisia)'
+  ],
+  'Best Documentary Feature': [
+    'The Alabama Solution', 'Come See Me in the Good Light', 'Cutting Through Rocks',
+    'Mr. Nobody Against Putin', 'The Perfect Neighbor'
+  ],
+  'Best Original Score': [
+    'Bugonia', 'Frankenstein', 'Hamnet', 'One Battle After Another', 'Sinners'
+  ],
+  'Best Original Song': [
+    '"Dear Me" – Diane Warren: Relentless', '"Golden" – KPop Demon Hunters',
+    '"I Lied To You" – Sinners', '"Sweet Dreams of Joy" – Viva Verdi', '"Train Dreams" – Train Dreams'
+  ],
+  'Best Cinematography': [
+    'Frankenstein', 'Marty Supreme', 'One Battle After Another', 'Sinners', 'Train Dreams'
+  ],
+  'Best Film Editing': [
+    'F1', 'Marty Supreme', 'One Battle After Another', 'Sentimental Value', 'Sinners'
+  ],
+  'Best Production Design': [
+    'Frankenstein', 'Hamnet', 'Marty Supreme', 'One Battle After Another', 'Sinners'
+  ],
+  'Best Costume Design': [
+    'Avatar: Fire and Ash', 'Frankenstein', 'Hamnet', 'Marty Supreme', 'Sinners'
+  ],
+  'Best Makeup and Hairstyling': [
+    'Frankenstein', 'Kokuho', 'Sinners', 'The Smashing Machine', 'The Ugly Stepsister'
+  ],
+  'Best Sound': [
+    'F1', 'Frankenstein', 'One Battle After Another', 'Sinners', 'Sirāt'
+  ],
+  'Best Visual Effects': [
+    'Avatar: Fire and Ash', 'F1', 'Jurassic World Rebirth', 'The Lost Bus', 'Sinners'
+  ]
+};
+
+const CATEGORY_ORDER = [
+  'Best Picture', 'Best Director', 'Best Actress', 'Best Actor',
+  'Best Supporting Actress', 'Best Supporting Actor', 'Best Original Screenplay', 'Best Adapted Screenplay',
+  'Best Animated Feature', 'Best International Feature', 'Best Documentary Feature',
+  'Best Original Score', 'Best Original Song', 'Best Cinematography', 'Best Film Editing',
+  'Best Production Design', 'Best Costume Design', 'Best Makeup and Hairstyling', 'Best Sound', 'Best Visual Effects'
+];
+
+const generateId = () => Math.random().toString(36).substring(2, 10);
+
+function OscarStatuette({ className = "h-7 text-amber-500" }) {
+  return (
+    <svg viewBox="0 0 100 300" className={className} fill="currentColor">
+      <ellipse cx="50" cy="290" rx="30" ry="10" />
+      <rect x="35" y="250" width="30" height="40" rx="2" />
+      <rect x="42" y="200" width="16" height="50" />
+      <ellipse cx="50" cy="200" rx="20" ry="8" />
+      <ellipse cx="50" cy="160" rx="18" ry="25" />
+      <circle cx="50" cy="100" r="22" />
+      <rect x="20" y="120" width="25" height="8" rx="4" />
+      <rect x="55" y="120" width="25" height="8" rx="4" />
+      <rect x="10" y="115" width="15" height="18" rx="3" />
+      <rect x="75" y="115" width="15" height="18" rx="3" />
+    </svg>
+  );
+}
+
+function NomineeRow({ nominee, currentPicks, onPick }) {
+  const isWillWin = currentPicks.willWin === nominee;
+  const isWishWin = currentPicks.wantWin === nominee;
+  
+  return (
+    <div 
+      onClick={() => {
+        if (isWillWin) {
+          onPick('willWin', null);
+        } else {
+          onPick('willWin', nominee);
+        }
+      }}
+      className={`relative flex items-center p-4 rounded-xl cursor-pointer transition-all ${
+        isWillWin 
+          ? 'bg-gradient-to-r from-amber-100 to-orange-100 border-2 border-amber-400 shadow-sm' 
+          : 'bg-amber-50/50 border-2 border-transparent hover:bg-amber-100/50'
+      }`}
+    >
+      {isWillWin && (
+        <span className="text-amber-500 text-lg mr-3">🏆</span>
+      )}
+      
+      <span className={`flex-1 text-sm font-medium leading-relaxed ${
+        isWillWin ? 'text-amber-900' : 'text-amber-800'
+      }`}>
+        {nominee}
+      </span>
+      
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          if (isWishWin) {
+            onPick('wantWin', null);
+          } else {
+            onPick('wantWin', nominee);
+          }
+        }}
+        className={`ml-2 w-8 h-8 rounded-full flex items-center justify-center transition-all text-sm ${
+          isWishWin
+            ? 'bg-rose-100 text-rose-500'
+            : 'text-amber-400 hover:text-rose-400 hover:bg-rose-50'
+        }`}
+      >
+        {isWishWin ? '★' : '☆'}
+      </button>
+    </div>
+  );
+}
+
+export default function App() {
+  const [view, setView] = useState('home');
+  const [ballotId, setBallotId] = useState(null);
+  const [voterName, setVoterName] = useState('');
+  const [picks, setPicks] = useState({});
+  const [winners, setWinners] = useState({});
+  const [isOwner, setIsOwner] = useState(false);
+  const [ballotData, setBallotData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [expandedCategories, setExpandedCategories] = useState(new Set(CATEGORY_ORDER));
+  const [showIncompleteWarning, setShowIncompleteWarning] = useState(false);
+  const [highlightIncomplete, setHighlightIncomplete] = useState(false);
+  const [nameError, setNameError] = useState(false);
+  const [shakeSaveButton, setShakeSaveButton] = useState(false);
+
+  useEffect(() => {
+    const loadBallot = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get('ballot');
+      if (id) {
+        setLoading(true);
+        try {
+          const { data, error } = await supabase
+            .from('ballots')
+            .select('*')
+            .eq('id', id)
+            .single();
+          
+          if (data && !error) {
+            setBallotData({
+              name: data.name,
+              picks: data.picks
+            });
+            setBallotId(id);
+            setView('view');
+            const localWinners = localStorage.getItem(`winners:${id}`);
+            if (localWinners) {
+              setWinners(JSON.parse(localWinners));
+            }
+          } else {
+            setView('home');
+          }
+        } catch (e) {
+          console.log('Ballot not found');
+          setView('home');
+        }
+        setLoading(false);
+      }
+    };
+    loadBallot();
+  }, []);
+
+  const startNewBallot = () => {
+    setPicks({});
+    setVoterName('');
+    setBallotId(null);
+    setIsOwner(true);
+    setView('create');
+  };
+
+  const handlePick = (category, nominee, type, value) => {
+    setPicks(prev => ({
+      ...prev,
+      [category]: {
+        ...prev[category],
+        [type]: value
+      }
+    }));
+  };
+
+  const saveBallot = async (forcesSave = false) => {
+    if (!voterName.trim()) {
+      setNameError(true);
+      return;
+    }
+    
+    const incompleteCategories = CATEGORY_ORDER.filter(cat => !picks[cat]?.willWin);
+    
+    if (incompleteCategories.length > 0 && !forcesSave) {
+      setShowIncompleteWarning(true);
+      return;
+    }
+
+    const id = ballotId || generateId();
+    const ballotPayload = {
+      id,
+      name: voterName,
+      picks,
+      created_at: new Date().toISOString()
+    };
+
+    try {
+      const { error } = await supabase
+        .from('ballots')
+        .upsert(ballotPayload, { onConflict: 'id' });
+      
+      if (error) throw error;
+      
+      setBallotId(id);
+      setBallotData({ name: voterName, picks });
+      setView('share');
+    } catch (e) {
+      console.error('Error saving ballot:', e);
+      alert('Error saving ballot. Please try again.');
+    }
+  };
+
+  const handleGoBackAndFinish = () => {
+    setShowIncompleteWarning(false);
+    setHighlightIncomplete(true);
+    const incompleteCategories = CATEGORY_ORDER.filter(cat => !picks[cat]?.willWin);
+    setExpandedCategories(new Set(incompleteCategories));
+  };
+
+  const markWinner = (category, nominee) => {
+    const newWinners = { ...winners, [category]: nominee };
+    setWinners(newWinners);
+    if (ballotId) {
+      localStorage.setItem(`winners:${ballotId}`, JSON.stringify(newWinners));
+    }
+  };
+
+  const copyLink = () => {
+    const url = `${window.location.origin}${window.location.pathname}?ballot=${ballotId}`;
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const calculateScore = () => {
+    if (!ballotData) return { correct: 0, total: 0 };
+    let correct = 0;
+    let total = Object.keys(winners).length;
+    
+    Object.entries(winners).forEach(([category, winner]) => {
+      if (ballotData.picks[category]?.willWin === winner) {
+        correct++;
+      }
+    });
+    
+    return { correct, total };
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 flex items-center justify-center">
+        <div className="text-2xl font-medium text-amber-800 animate-pulse">Loading ballot...</div>
+      </div>
+    );
+  }
+
+  // Home Screen
+  if (view === 'home') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 flex flex-col items-center justify-center p-6">
+        <div className="text-center max-w-md">
+          <OscarStatuette className="h-32 text-amber-500 mx-auto mb-4" />
+          <h1 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-600 via-orange-500 to-rose-500 mb-2" style={{ fontFamily: 'system-ui' }}>
+            Oscar Ballot
+          </h1>
+          <p className="text-lg text-amber-800/70 mb-8">98th Academy Awards • 2026</p>
+          
+          <button
+            onClick={startNewBallot}
+            className="w-full py-4 px-8 bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 text-white text-xl font-bold rounded-2xl shadow-lg shadow-orange-300/50 hover:shadow-xl hover:shadow-orange-300/60 transform hover:-translate-y-1 transition-all duration-200"
+          >
+            Create Your Ballot
+          </button>
+          
+          <p className="mt-8 text-sm text-amber-700/60">
+            Make your picks, share with friends, score as you watch!
+          </p>
+        </div>
+        
+        <a 
+          href="https://buymeacoffee.com" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="fixed bottom-4 right-4 bg-amber-100 hover:bg-amber-200 text-amber-800 text-sm font-medium py-2 px-4 rounded-full transition-colors flex items-center gap-2"
+        >
+          ☕ Buy me a coffee
+        </a>
+      </div>
+    );
+  }
+
+  // Create Ballot Screen
+  if (view === 'create') {
+    const completedCount = Object.keys(picks).filter(cat => picks[cat]?.willWin).length;
+    
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 pb-32">
+        <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-lg border-b border-amber-200/50 px-4 py-4">
+          <div className="max-w-2xl mx-auto">
+            <h1 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-600 to-rose-500">
+              🏆 Your Ballot
+            </h1>
+            <div className="mt-2">
+              <input
+                type="text"
+                placeholder="Your name"
+                value={voterName}
+                onChange={(e) => {
+                  setVoterName(e.target.value);
+                  if (nameError) setNameError(false);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === 'Tab') {
+                    e.target.blur();
+                  }
+                }}
+                className={`w-full px-4 py-2 bg-white border-2 rounded-xl text-amber-900 placeholder:text-amber-400 focus:outline-none transition-colors ${
+                  nameError 
+                    ? 'border-red-400 shake' 
+                    : 'border-amber-200 focus:border-orange-400'
+                }`}
+              />
+              {nameError && (
+                <p className="text-red-500 text-xs mt-1 font-medium">Please enter your name</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
+          {CATEGORY_ORDER.map((category) => {
+            const nominees = CATEGORIES[category];
+            const isExpanded = expandedCategories.has(category);
+            const currentPicks = picks[category] || {};
+            const hasWillWin = !!currentPicks.willWin;
+            
+            const toggleCategory = () => {
+              setExpandedCategories(prev => {
+                const next = new Set(prev);
+                if (next.has(category)) {
+                  next.delete(category);
+                } else {
+                  next.add(category);
+                }
+                return next;
+              });
+            };
+
+            const isIncomplete = !hasWillWin && highlightIncomplete;
+            
+            return (
+              <div 
+                key={category}
+                id={`category-${category}`}
+                className={`bg-white rounded-2xl shadow-sm border-2 overflow-hidden transition-all duration-200 ${
+                  hasWillWin ? 'border-green-300' : isIncomplete ? 'border-orange-400 glow-pulse' : 'border-amber-100'
+                }`}
+              >
+                <button
+                  onClick={toggleCategory}
+                  className="w-full px-5 py-4 flex items-center justify-between text-left"
+                >
+                  <div className="flex items-center gap-3">
+                    {hasWillWin && <span className="text-green-500 text-xl">✓</span>}
+                    <span className="font-bold text-amber-900">{category}</span>
+                  </div>
+                  <span className={`text-lg text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>
+                    ⌄
+                  </span>
+                </button>
+                
+                {isExpanded && (
+                  <div className="px-5 pb-5 space-y-2">
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-xs text-amber-700 font-medium">Tap to pick winner</p>
+                      <p className="text-xs text-amber-700 font-medium">☆ wish they'd win</p>
+                    </div>
+                    {nominees.map((nominee) => (
+                      <NomineeRow 
+                        key={nominee}
+                        nominee={nominee}
+                        currentPicks={currentPicks}
+                        onPick={(type, value) => handlePick(category, nominee, type, value)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-lg border-t border-amber-200">
+          <div className="max-w-2xl mx-auto">
+            <button
+              onClick={() => saveBallot(false)}
+              className={`w-full py-4 rounded-2xl font-bold text-lg transition-all bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 text-white shadow-lg hover:shadow-xl ${shakeSaveButton ? 'shake' : ''}`}
+            >
+              Save & Get Share Link
+            </button>
+          </div>
+        </div>
+
+        {/* Floating progress counter */}
+        {completedCount > 0 && (
+          <div className="fixed bottom-32 left-4 bg-white/90 px-3 py-1 rounded-full z-10">
+            <span className="text-base font-bold text-amber-700">{completedCount}</span>
+            <span className="text-xs font-medium text-amber-600"> / {CATEGORY_ORDER.length}</span>
+          </div>
+        )}
+
+        {/* Incomplete Warning Modal */}
+        {showIncompleteWarning && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+              <div className="text-4xl mb-3 text-center">🤔</div>
+              <h2 className="text-xl font-bold text-amber-900 text-center mb-2">Not quite done!</h2>
+              <p className="text-amber-700 text-center mb-4">
+                You haven't picked "Will Win" for {CATEGORY_ORDER.filter(cat => !picks[cat]?.willWin).length} categories.
+              </p>
+              <div className="space-y-3">
+                <button
+                  onClick={handleGoBackAndFinish}
+                  className="w-full py-3 rounded-xl font-bold bg-gradient-to-r from-amber-500 to-orange-500 text-white"
+                >
+                  Go Back & Finish
+                </button>
+                <button
+                  onClick={() => {
+                    setShowIncompleteWarning(false);
+                    saveBallot(true);
+                  }}
+                  className="w-full py-3 rounded-xl font-medium bg-gray-100 text-gray-600 hover:bg-gray-200"
+                >
+                  Save Anyway
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Share Screen
+  if (view === 'share') {
+    const url = `${window.location.origin}${window.location.pathname}?ballot=${ballotId}`;
+    
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 flex flex-col items-center justify-center p-6">
+        <div className="text-center max-w-md bg-white rounded-3xl p-8 shadow-xl">
+          <div className="text-6xl mb-4">🎉</div>
+          <h1 className="text-3xl font-black text-amber-900 mb-2">Ballot Saved!</h1>
+          <p className="text-amber-700 mb-6">Share this link with friends to let them score your picks!</p>
+          
+          <div className="bg-amber-50 rounded-xl p-4 mb-4 break-all text-sm text-amber-800 font-mono">
+            {url}
+          </div>
+          
+          <button
+            onClick={copyLink}
+            className={`w-full py-3 rounded-xl font-bold text-lg transition-all mb-4 ${
+              copied 
+                ? 'bg-green-500 text-white' 
+                : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:shadow-lg'
+            }`}
+          >
+            {copied ? '✓ Copied!' : 'Copy Link'}
+          </button>
+          
+          <button
+            onClick={() => {
+              setBallotData({ name: voterName, picks });
+              setView('view');
+            }}
+            className="w-full py-3 rounded-xl font-bold text-lg bg-white border-2 border-amber-300 text-amber-700 hover:bg-amber-50 transition-all"
+          >
+            View My Ballot
+          </button>
+        </div>
+        
+        <a 
+          href="https://buymeacoffee.com" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="fixed bottom-4 right-4 bg-amber-100 hover:bg-amber-200 text-amber-800 text-sm font-medium py-2 px-4 rounded-full transition-colors flex items-center gap-2"
+        >
+          ☕ Buy me a coffee
+        </a>
+      </div>
+    );
+  }
+
+  // View/Score Ballot Screen
+  if (view === 'view' && ballotData) {
+    const score = calculateScore();
+    
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 pb-8">
+        <div className="sticky top-0 z-20 bg-white/90 backdrop-blur-lg border-b border-amber-200/50 px-4 py-4">
+          <div className="max-w-2xl mx-auto">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-xl font-black text-amber-900">{ballotData.name}'s Ballot</h1>
+                <p className="text-sm text-amber-600">Tap winners as they're announced</p>
+              </div>
+              {score.total > 0 && (
+                <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 py-2 rounded-xl">
+                  <span className="text-2xl font-black">{score.correct}</span>
+                  <span className="text-sm font-medium">/{score.total}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
+          {CATEGORY_ORDER.map((category, index) => {
+            const nominees = CATEGORIES[category];
+            const userPicks = ballotData.picks[category] || {};
+            const winner = winners[category];
+            const isCorrect = winner && userPicks.willWin === winner;
+            const isWrong = winner && userPicks.willWin && userPicks.willWin !== winner;
+            
+            return (
+              <div 
+                key={category}
+                className={`bg-white rounded-2xl shadow-sm border-2 overflow-hidden transition-all ${
+                  isCorrect ? 'border-green-400 bg-green-50/30' : 
+                  isWrong ? 'border-rose-300 bg-rose-50/30' : 
+                  'border-amber-100'
+                }`}
+              >
+                <div className="px-5 py-4 border-b border-amber-100/50 flex items-center justify-between">
+                  <span className="font-bold text-amber-900">
+                    <span className="text-amber-400 mr-2">{index + 1}.</span>
+                    {category}
+                  </span>
+                  {isCorrect && <span className="text-green-500 text-xl">✓ Correct!</span>}
+                  {isWrong && <span className="text-rose-400 text-sm">✗ Wrong</span>}
+                </div>
+                
+                <div className="p-4 space-y-2">
+                  {userPicks.willWin && (
+                    <div className={`flex items-center gap-2 p-3 rounded-xl ${
+                      isCorrect ? 'bg-green-100' : isWrong ? 'bg-rose-100' : 'bg-amber-100'
+                    }`}>
+                      <span className="text-lg">🏆</span>
+                      <span className="font-semibold text-amber-900 flex-1">{userPicks.willWin}</span>
+                      <span className="text-xs text-amber-600 uppercase tracking-wide">Will Win</span>
+                    </div>
+                  )}
+                  {userPicks.wantWin && userPicks.wantWin !== userPicks.willWin && (
+                    <div className="flex items-center gap-2 p-3 rounded-xl bg-rose-50">
+                      <span className="text-lg">❤️</span>
+                      <span className="font-medium text-amber-800 flex-1">{userPicks.wantWin}</span>
+                      <span className="text-xs text-rose-500 uppercase tracking-wide">Want to Win</span>
+                    </div>
+                  )}
+                  
+                  {!winner && (
+                    <div className="pt-3 border-t border-amber-200 mt-3">
+                      <p className="text-xs text-stone-500 uppercase tracking-wide mb-2 font-semibold">Mark the winner:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {nominees.map((nominee) => (
+                          <button
+                            key={nominee}
+                            onClick={() => markWinner(category, nominee)}
+                            className="text-xs px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-full transition-colors truncate max-w-[150px]"
+                            title={nominee}
+                          >
+                            {nominee.length > 20 ? nominee.substring(0, 20) + '...' : nominee}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {winner && (
+                    <div className="pt-3 border-t border-amber-200 mt-3 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-amber-500">🎬</span>
+                        <span className="text-sm text-amber-700"><span className="font-semibold">Winner:</span> {winner}</span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          const newWinners = { ...winners };
+                          delete newWinners[category];
+                          setWinners(newWinners);
+                          localStorage.setItem(`winners:${ballotId}`, JSON.stringify(newWinners));
+                        }}
+                        className="text-xs text-stone-400 hover:text-stone-600"
+                      >
+                        Change
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="max-w-2xl mx-auto px-4 mt-8 space-y-3">
+          <button
+            onClick={() => {
+              setVoterName(ballotData.name);
+              setPicks(ballotData.picks);
+              setIsOwner(true);
+              setView('create');
+            }}
+            className="w-full py-3 rounded-xl font-bold bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:shadow-lg transition-all"
+          >
+            Edit Ballot
+          </button>
+          <button
+            onClick={copyLink}
+            className="w-full py-3 rounded-xl font-medium bg-white border-2 border-amber-300 text-amber-700 hover:bg-amber-50 transition-all"
+          >
+            {copied ? '✓ Link Copied!' : 'Share This Ballot'}
+          </button>
+        </div>
+        
+        <a 
+          href="https://buymeacoffee.com" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="fixed bottom-4 right-4 bg-amber-100 hover:bg-amber-200 text-amber-800 text-sm font-medium py-2 px-4 rounded-full transition-colors flex items-center gap-2"
+        >
+          ☕ Buy me a coffee
+        </a>
+      </div>
+    );
+  }
+
+  return null;
+}
