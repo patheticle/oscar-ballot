@@ -166,12 +166,17 @@ export default function App() {
   const [nameError, setNameError] = useState(false);
   const [shakeSaveButton, setShakeSaveButton] = useState(false);
   const [myBallots, setMyBallots] = useState([]);
+  const [sharedBallots, setSharedBallots] = useState([]);
 
   // Load saved ballots from localStorage on mount
   useEffect(() => {
     const saved = localStorage.getItem('myBallots');
     if (saved) {
       setMyBallots(JSON.parse(saved));
+    }
+    const shared = localStorage.getItem('sharedBallots');
+    if (shared) {
+      setSharedBallots(JSON.parse(shared));
     }
   }, []);
 
@@ -181,6 +186,16 @@ export default function App() {
     const updated = [...existing, { id, name, savedAt: new Date().toISOString() }];
     setMyBallots(updated);
     localStorage.setItem('myBallots', JSON.stringify(updated));
+  };
+
+  // Save ballot to sharedBallots list (ballots shared with me)
+  const saveToSharedBallots = (id, name) => {
+    // Don't save if it's one of my own ballots
+    if (myBallots.some(b => b.id === id)) return;
+    const existing = sharedBallots.filter(b => b.id !== id);
+    const updated = [...existing, { id, name, savedAt: new Date().toISOString() }];
+    setSharedBallots(updated);
+    localStorage.setItem('sharedBallots', JSON.stringify(updated));
   };
 
   // Delete ballot from myBallots list
@@ -195,6 +210,24 @@ export default function App() {
     } catch (e) {
       console.error('Error deleting ballot:', e);
     }
+  };
+
+  // Remove ballot from sharedBallots list (just local, doesn't delete from db)
+  const removeFromSharedBallots = (id) => {
+    const updated = sharedBallots.filter(b => b.id !== id);
+    setSharedBallots(updated);
+    localStorage.setItem('sharedBallots', JSON.stringify(updated));
+  };
+
+  // Navigate to home and clear URL
+  const goHome = () => {
+    window.history.pushState({}, '', window.location.pathname);
+    setBallotId(null);
+    setBallotData(null);
+    setVoterName('');
+    setPicks({});
+    setWinners({});
+    setView('home');
   };
 
   useEffect(() => {
@@ -217,6 +250,8 @@ export default function App() {
             });
             setBallotId(id);
             setView('view');
+            // Save to shared ballots if not one of mine
+            saveToSharedBallots(id, data.voter_name);
             const localWinners = localStorage.getItem(`winners:${id}`);
             if (localWinners) {
               setWinners(JSON.parse(localWinners));
@@ -342,7 +377,7 @@ export default function App() {
   if (view === 'home') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 flex flex-col items-center justify-center p-6">
-        <div className="text-center max-w-md">
+        <div className="text-center max-w-md w-full">
           <div className="text-8xl mb-4">🏆</div>
           <h1 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-600 via-orange-500 to-rose-500 mb-2" style={{ fontFamily: 'system-ui' }}>
             Oscar Ballot
@@ -357,8 +392,8 @@ export default function App() {
           </button>
           
           {myBallots.length > 0 && (
-            <div className="mt-8 w-full">
-              <p className="text-sm text-amber-700/60 mb-3">Your Ballots</p>
+            <div className="mt-8 w-full text-left">
+              <p className="text-sm text-amber-700/60 mb-3 font-medium">My Ballots</p>
               <div className="space-y-2">
                 {myBallots.map((ballot) => (
                   <div 
@@ -388,7 +423,39 @@ export default function App() {
             </div>
           )}
           
-          {myBallots.length === 0 && (
+          {sharedBallots.length > 0 && (
+            <div className="mt-8 w-full text-left">
+              <p className="text-sm text-amber-700/60 mb-3 font-medium">Shared with me</p>
+              <div className="space-y-2">
+                {sharedBallots.map((ballot) => (
+                  <div 
+                    key={ballot.id}
+                    className="bg-white rounded-xl p-4 shadow-sm border border-amber-100 flex items-center justify-between"
+                  >
+                    <span className="font-medium text-amber-900">{ballot.name}'s Ballot</span>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          window.location.href = `${window.location.origin}${window.location.pathname}?ballot=${ballot.id}`;
+                        }}
+                        className="text-xs px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-700 rounded-lg transition-colors"
+                      >
+                        View
+                      </button>
+                      <button
+                        onClick={() => removeFromSharedBallots(ballot.id)}
+                        className="text-xs px-3 py-1.5 bg-stone-50 hover:bg-stone-100 text-stone-500 rounded-lg transition-colors"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {myBallots.length === 0 && sharedBallots.length === 0 && (
             <p className="mt-8 text-sm text-amber-700/60">
               Make your picks, share with friends, score as you watch!
             </p>
@@ -415,8 +482,11 @@ export default function App() {
       <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 pb-32">
         <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-lg border-b border-amber-200/50 px-4 py-4">
           <div className="max-w-2xl mx-auto">
+            <button onClick={goHome} className="text-amber-700 hover:text-amber-900 font-medium text-sm mb-2">
+              ← My Ballots
+            </button>
             <h1 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-600 to-rose-500">
-              🏆 Your Ballot
+              Your Ballot
             </h1>
             <div className="mt-2">
               <input
@@ -566,68 +636,62 @@ export default function App() {
     const shareText = `Check out my Oscar ballot! ${url}`;
     
     return (
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 flex flex-col items-center justify-center p-6">
-        <div className="text-center max-w-md bg-white rounded-3xl p-8 shadow-xl">
-          <div className="text-6xl mb-4">🎉</div>
-          <h1 className="text-3xl font-black text-amber-900 mb-2">Ballot Saved!</h1>
-          <p className="text-amber-700 mb-6">Share this link with friends to let them score your picks!</p>
-          
-          <div className="bg-amber-50 rounded-xl p-4 mb-4 break-all text-sm text-amber-800 font-mono">
-            {url}
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50">
+        <div className="sticky top-0 z-20 bg-white/90 backdrop-blur-lg border-b border-amber-200/50 px-4 py-3">
+          <div className="max-w-2xl mx-auto">
+            <button onClick={goHome} className="text-amber-700 hover:text-amber-900 font-medium text-sm">
+              ← My Ballots
+            </button>
           </div>
-          
-          <button
-            onClick={copyLink}
-            className={`w-full py-3 rounded-xl font-bold text-lg transition-all mb-4 ${
-              copied 
-                ? 'bg-green-500 text-white' 
-                : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:shadow-lg'
-            }`}
-          >
-            {copied ? '✓ Copied!' : 'Copy Link'}
-          </button>
-          
-          <div className="border-t border-amber-100 pt-4 mb-4">
-            <p className="text-sm text-amber-600 mb-3">Send to yourself as backup:</p>
-            <div className="flex gap-2">
+        </div>
+        
+        <div className="flex flex-col items-center justify-center p-6 min-h-[calc(100vh-60px)]">
+          <div className="text-center max-w-md bg-white rounded-3xl p-8 shadow-xl">
+            <div className="text-6xl mb-4">🎉</div>
+            <h1 className="text-3xl font-black text-amber-900 mb-2">Ballot Saved!</h1>
+            <p className="text-amber-700 mb-6">Share with friends to let them score your picks!</p>
+            
+            <div className="bg-amber-50 rounded-xl p-4 mb-4 break-all text-sm text-amber-800 font-mono">
+              {url}
+            </div>
+            
+            <p className="text-sm text-amber-600 mb-3 font-medium">Ways to share:</p>
+            <div className="flex gap-2 mb-6">
+              <button
+                onClick={copyLink}
+                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
+                  copied 
+                    ? 'bg-green-500 text-white' 
+                    : 'bg-amber-100 hover:bg-amber-200 text-amber-700'
+                }`}
+              >
+                {copied ? '✓ Copied!' : 'Copy'}
+              </button>
               <a
                 href={`sms:?body=${encodeURIComponent(shareText)}`}
-                className="flex-1 py-2 px-4 rounded-lg bg-green-50 hover:bg-green-100 text-green-700 text-sm font-medium transition-colors"
+                className="flex-1 py-2 px-4 rounded-lg bg-green-50 hover:bg-green-100 text-green-700 text-sm font-medium transition-colors text-center"
               >
-                📱 Text
+                Text
               </a>
               <a
                 href={`mailto:?subject=${encodeURIComponent('My Oscar Ballot')}&body=${encodeURIComponent(shareText)}`}
-                className="flex-1 py-2 px-4 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-sm font-medium transition-colors"
+                className="flex-1 py-2 px-4 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-sm font-medium transition-colors text-center"
               >
-                ✉️ Email
+                Email
               </a>
             </div>
+            
+            <button
+              onClick={() => {
+                setBallotData({ name: voterName, picks });
+                setView('view');
+              }}
+              className="w-full py-3 rounded-xl font-bold text-lg bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:shadow-lg transition-all"
+            >
+              View My Ballot
+            </button>
           </div>
-          
-          <button
-            onClick={() => {
-              setBallotData({ name: voterName, picks });
-              setView('view');
-            }}
-            className="w-full py-3 rounded-xl font-bold text-lg bg-white border-2 border-amber-300 text-amber-700 hover:bg-amber-50 transition-all"
-          >
-            View My Ballot
-          </button>
-          
-          <p className="mt-4 text-xs text-amber-500">
-            Your ballot is also saved on this device
-          </p>
         </div>
-        
-        <a 
-          href="https://buymeacoffee.com" 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="fixed bottom-4 right-4 bg-amber-100 hover:bg-amber-200 text-amber-800 text-sm font-medium py-2 px-4 rounded-full transition-colors flex items-center gap-2"
-        >
-          ☕ Buy me a coffee
-        </a>
       </div>
     );
   }
@@ -640,6 +704,9 @@ export default function App() {
       <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 pb-8">
         <div className="sticky top-0 z-20 bg-white/90 backdrop-blur-lg border-b border-amber-200/50 px-4 py-4">
           <div className="max-w-2xl mx-auto">
+            <button onClick={goHome} className="text-amber-700 hover:text-amber-900 font-medium text-sm mb-2">
+              ← My Ballots
+            </button>
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-xl font-black text-amber-900">{ballotData.name}'s Ballot</h1>
