@@ -165,6 +165,37 @@ export default function App() {
   const [highlightIncomplete, setHighlightIncomplete] = useState(false);
   const [nameError, setNameError] = useState(false);
   const [shakeSaveButton, setShakeSaveButton] = useState(false);
+  const [myBallots, setMyBallots] = useState([]);
+
+  // Load saved ballots from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('myBallots');
+    if (saved) {
+      setMyBallots(JSON.parse(saved));
+    }
+  }, []);
+
+  // Save ballot to myBallots list
+  const saveToMyBallots = (id, name) => {
+    const existing = myBallots.filter(b => b.id !== id);
+    const updated = [...existing, { id, name, savedAt: new Date().toISOString() }];
+    setMyBallots(updated);
+    localStorage.setItem('myBallots', JSON.stringify(updated));
+  };
+
+  // Delete ballot from myBallots list
+  const deleteFromMyBallots = async (id) => {
+    if (!confirm('Delete this ballot? This cannot be undone.')) return;
+    const updated = myBallots.filter(b => b.id !== id);
+    setMyBallots(updated);
+    localStorage.setItem('myBallots', JSON.stringify(updated));
+    // Also delete from database
+    try {
+      await supabase.from('ballots').delete().eq('id', id);
+    } catch (e) {
+      console.error('Error deleting ballot:', e);
+    }
+  };
 
   useEffect(() => {
     const loadBallot = async () => {
@@ -251,6 +282,7 @@ export default function App() {
       
       setBallotId(id);
       setBallotData({ name: voterName, picks });
+      saveToMyBallots(id, voterName);
       setView('share');
     } catch (e) {
       console.error('Error saving ballot:', e);
@@ -324,9 +356,43 @@ export default function App() {
             Create Your Ballot
           </button>
           
-          <p className="mt-8 text-sm text-amber-700/60">
-            Make your picks, share with friends, score as you watch!
-          </p>
+          {myBallots.length > 0 && (
+            <div className="mt-8 w-full">
+              <p className="text-sm text-amber-700/60 mb-3">Your Ballots</p>
+              <div className="space-y-2">
+                {myBallots.map((ballot) => (
+                  <div 
+                    key={ballot.id}
+                    className="bg-white rounded-xl p-4 shadow-sm border border-amber-100 flex items-center justify-between"
+                  >
+                    <span className="font-medium text-amber-900">{ballot.name}'s Ballot</span>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          window.location.href = `${window.location.origin}${window.location.pathname}?ballot=${ballot.id}`;
+                        }}
+                        className="text-xs px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-700 rounded-lg transition-colors"
+                      >
+                        View
+                      </button>
+                      <button
+                        onClick={() => deleteFromMyBallots(ballot.id)}
+                        className="text-xs px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-500 rounded-lg transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {myBallots.length === 0 && (
+            <p className="mt-8 text-sm text-amber-700/60">
+              Make your picks, share with friends, score as you watch!
+            </p>
+          )}
         </div>
         
         <a 
@@ -497,6 +563,7 @@ export default function App() {
   // Share Screen
   if (view === 'share') {
     const url = `${window.location.origin}${window.location.pathname}?ballot=${ballotId}`;
+    const shareText = `Check out my Oscar ballot! ${url}`;
     
     return (
       <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 flex flex-col items-center justify-center p-6">
@@ -520,6 +587,24 @@ export default function App() {
             {copied ? '✓ Copied!' : 'Copy Link'}
           </button>
           
+          <div className="border-t border-amber-100 pt-4 mb-4">
+            <p className="text-sm text-amber-600 mb-3">Send to yourself as backup:</p>
+            <div className="flex gap-2">
+              <a
+                href={`sms:?body=${encodeURIComponent(shareText)}`}
+                className="flex-1 py-2 px-4 rounded-lg bg-green-50 hover:bg-green-100 text-green-700 text-sm font-medium transition-colors"
+              >
+                📱 Text
+              </a>
+              <a
+                href={`mailto:?subject=${encodeURIComponent('My Oscar Ballot')}&body=${encodeURIComponent(shareText)}`}
+                className="flex-1 py-2 px-4 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-sm font-medium transition-colors"
+              >
+                ✉️ Email
+              </a>
+            </div>
+          </div>
+          
           <button
             onClick={() => {
               setBallotData({ name: voterName, picks });
@@ -529,6 +614,10 @@ export default function App() {
           >
             View My Ballot
           </button>
+          
+          <p className="mt-4 text-xs text-amber-500">
+            Your ballot is also saved on this device
+          </p>
         </div>
         
         <a 
