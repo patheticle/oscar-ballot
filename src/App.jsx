@@ -999,7 +999,7 @@ export default function App() {
                   ☰
                 </button>
                 {showMenu && (
-                  <div className="absolute right-0 top-8 bg-white rounded-xl shadow-lg border border-amber-100 py-2 min-w-[160px] z-30">
+                  <div className="absolute right-0 top-8 bg-white rounded-xl shadow-lg border border-amber-100 py-2 min-w-[160px] z-50">
                     <button
                       onClick={() => {
                         setShowMenu(false);
@@ -1157,6 +1157,32 @@ export default function App() {
               </div>
             );
           })}
+        </div>
+
+        <div className="max-w-2xl mx-auto px-4 mt-8 space-y-3">
+          <button
+            onClick={() => {
+              setVoterName(ballotData.name);
+              setPicks(ballotData.picks);
+              setIsOwner(true);
+              setView('create');
+            }}
+            className="w-full py-3 rounded-xl font-bold bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:shadow-lg transition-all"
+          >
+            Edit Ballot
+          </button>
+          <button
+            onClick={() => generateBallotPDF(ballotData.name, ballotData.picks, false)}
+            className="w-full py-3 rounded-xl font-medium bg-white border-2 border-amber-300 text-amber-700 hover:bg-amber-50 transition-all"
+          >
+            Download PDF
+          </button>
+          <button
+            onClick={copyLink}
+            className="w-full py-3 rounded-xl font-medium bg-amber-50 border-2 border-amber-200 text-amber-600 hover:bg-amber-100 transition-all"
+          >
+            {copied ? '✓ Link Copied!' : 'Share This Ballot'}
+          </button>
         </div>
       </div>
     );
