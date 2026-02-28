@@ -311,9 +311,11 @@ export default function App() {
   const [shakeSaveButton, setShakeSaveButton] = useState(false);
   const [myBallots, setMyBallots] = useState([]);
   const [sharedBallots, setSharedBallots] = useState([]);
-  const [showScoreboard, setShowScoreboard] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
   const [scoreboardData, setScoreboardData] = useState([]);
   const [scoreboardMismatches, setScoreboardMismatches] = useState([]);
+  const [scoreboardSource, setScoreboardSource] = useState(null);
+  const [previousView, setPreviousView] = useState(null);
 
   // Load saved ballots from localStorage on mount
   useEffect(() => {
@@ -519,7 +521,11 @@ export default function App() {
       ...sharedBallots.map(b => b.id)
     ];
     
-    if (allBallotIds.length === 0) return;
+    if (allBallotIds.length === 0) {
+      setScoreboardData([]);
+      setScoreboardSource(null);
+      return;
+    }
     
     try {
       const { data, error } = await supabase
@@ -529,13 +535,33 @@ export default function App() {
       
       if (error) throw error;
       
-      // Calculate scores for each ballot based on current ballot's winners
+      // Find the ballot with the most winners marked
+      let sourceBallot = null;
+      let maxWinners = 0;
+      data.forEach(ballot => {
+        const winnerCount = Object.keys(ballot.winners || {}).length;
+        if (winnerCount > maxWinners) {
+          maxWinners = winnerCount;
+          sourceBallot = ballot;
+        }
+      });
+      
+      if (!sourceBallot || maxWinners === 0) {
+        setScoreboardData([]);
+        setScoreboardSource(null);
+        return;
+      }
+      
+      const sourceWinners = sourceBallot.winners || {};
+      setScoreboardSource({ name: sourceBallot.voter_name, count: maxWinners });
+      
+      // Calculate scores for each ballot based on source ballot's winners
       const scores = data.map(ballot => {
         let correct = 0;
         let heartCorrect = 0;
-        const total = Object.keys(winners).length;
+        const total = Object.keys(sourceWinners).length;
         
-        Object.entries(winners).forEach(([category, winner]) => {
+        Object.entries(sourceWinners).forEach(([category, winner]) => {
           if (ballot.picks[category]?.willWin === winner) {
             correct++;
           }
@@ -554,14 +580,18 @@ export default function App() {
         };
       });
       
-      // Sort by correct picks descending
-      scores.sort((a, b) => b.correct - a.correct);
+      // Sort by correct picks descending, then by hearts
+      scores.sort((a, b) => {
+        if (b.correct !== a.correct) return b.correct - a.correct;
+        return b.heartCorrect - a.heartCorrect;
+      });
       setScoreboardData(scores);
       
       // Find mismatches
       const mismatches = [];
-      Object.entries(winners).forEach(([category, winner]) => {
+      Object.entries(sourceWinners).forEach(([category, winner]) => {
         data.forEach(ballot => {
+          if (ballot.id === sourceBallot.id) return; // Skip source ballot
           const theirWinner = ballot.winners?.[category];
           if (theirWinner && theirWinner !== winner) {
             mismatches.push({
@@ -961,15 +991,59 @@ export default function App() {
               <button onClick={goHome} className="text-amber-700 hover:text-amber-900 font-medium text-sm">
                 ← My Ballots
               </button>
-              <button 
-                onClick={() => {
-                  loadScoreboard();
-                  setShowScoreboard(true);
-                }}
-                className="text-sm font-medium px-3 py-1 bg-amber-100 hover:bg-amber-200 text-amber-700 rounded-lg transition-colors"
-              >
-                🏆 Scoreboard
-              </button>
+              <div className="relative">
+                <button 
+                  onClick={() => setShowMenu(!showMenu)}
+                  className="text-2xl text-amber-700 hover:text-amber-900 px-2"
+                >
+                  ☰
+                </button>
+                {showMenu && (
+                  <div className="absolute right-0 top-8 bg-white rounded-xl shadow-lg border border-amber-100 py-2 min-w-[160px] z-30">
+                    <button
+                      onClick={() => {
+                        setShowMenu(false);
+                        setPreviousView('view');
+                        loadScoreboard();
+                        setView('scoreboard');
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm text-amber-800 hover:bg-amber-50"
+                    >
+                      🏆 Scoreboard
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowMenu(false);
+                        setVoterName(ballotData.name);
+                        setPicks(ballotData.picks);
+                        setIsOwner(true);
+                        setView('create');
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm text-amber-800 hover:bg-amber-50"
+                    >
+                      ✏️ Edit Ballot
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowMenu(false);
+                        generateBallotPDF(ballotData.name, ballotData.picks, false);
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm text-amber-800 hover:bg-amber-50"
+                    >
+                      📄 Download PDF
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowMenu(false);
+                        copyLink();
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm text-amber-800 hover:bg-amber-50"
+                    >
+                      🔗 {copied ? 'Link Copied!' : 'Share Link'}
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
             <div className="flex items-center justify-between">
               <div>
@@ -992,6 +1066,14 @@ export default function App() {
             </div>
           </div>
         </div>
+
+        {/* Click outside to close menu */}
+        {showMenu && (
+          <div 
+            className="fixed inset-0 z-20" 
+            onClick={() => setShowMenu(false)}
+          />
+        )}
 
         <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
           {CATEGORY_ORDER.map((category, index) => {
@@ -1076,120 +1158,106 @@ export default function App() {
             );
           })}
         </div>
+      </div>
+    );
+  }
 
-        <div className="max-w-2xl mx-auto px-4 mt-8 space-y-3">
-          <button
-            onClick={() => {
-              setVoterName(ballotData.name);
-              setPicks(ballotData.picks);
-              setIsOwner(true);
-              setView('create');
-            }}
-            className="w-full py-3 rounded-xl font-bold bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:shadow-lg transition-all"
-          >
-            Edit Ballot
-          </button>
-          <button
-            onClick={() => generateBallotPDF(ballotData.name, ballotData.picks, false)}
-            className="w-full py-3 rounded-xl font-medium bg-white border-2 border-amber-300 text-amber-700 hover:bg-amber-50 transition-all"
-          >
-            Download PDF
-          </button>
-          <button
-            onClick={copyLink}
-            className="w-full py-3 rounded-xl font-medium bg-amber-50 border-2 border-amber-200 text-amber-600 hover:bg-amber-100 transition-all"
-          >
-            {copied ? '✓ Link Copied!' : 'Share This Ballot'}
-          </button>
+  // Scoreboard View
+  if (view === 'scoreboard') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 pb-8">
+        <div className="sticky top-0 z-20 bg-white/90 backdrop-blur-lg border-b border-amber-200/50 px-4 py-4">
+          <div className="max-w-2xl mx-auto">
+            <button 
+              onClick={() => setView(previousView || 'home')} 
+              className="text-amber-700 hover:text-amber-900 font-medium text-sm"
+            >
+              ← Back
+            </button>
+          </div>
         </div>
 
-        {/* Scoreboard Modal */}
-        {showScoreboard && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-2xl max-w-md w-full max-h-[80vh] overflow-hidden shadow-2xl">
-              <div className="px-6 py-4 border-b border-amber-100 flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-black text-amber-900">🏆 Scoreboard</h2>
-                  <p className="text-sm text-amber-600">
-                    {Object.keys(winners).length}/20 announced • Based on {ballotData.name}'s ballot
+        <div className="max-w-2xl mx-auto px-4 py-6">
+          <div className="text-center mb-6">
+            <h1 className="text-3xl font-black text-amber-900">🏆 Scoreboard</h1>
+            {scoreboardSource ? (
+              <p className="text-sm text-amber-600 mt-1">
+                {scoreboardSource.count}/20 announced • Winners from {scoreboardSource.name}'s ballot
+              </p>
+            ) : (
+              <p className="text-sm text-amber-600 mt-1">No winners marked yet</p>
+            )}
+          </div>
+
+          {scoreboardData.length === 0 ? (
+            <div className="bg-white rounded-2xl p-8 text-center">
+              <p className="text-amber-600">
+                {scoreboardSource === null 
+                  ? "No winners have been marked yet. View a ballot and start marking winners!"
+                  : "No shared ballots yet. Share your ballot with friends to see the scoreboard!"}
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Score table */}
+              <div className="bg-white rounded-2xl shadow-sm border border-amber-100 overflow-hidden mb-6">
+                <table className="w-full">
+                  <thead>
+                    <tr className="text-left text-xs text-amber-600 uppercase tracking-wide bg-amber-50">
+                      <th className="px-4 py-3"></th>
+                      <th className="px-4 py-3">Name</th>
+                      <th className="px-4 py-3 text-center">Picks</th>
+                      <th className="px-4 py-3 text-center">❤️</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {scoreboardData.map((entry, index) => (
+                      <tr key={entry.id} className={`border-t border-amber-50 ${index === 0 ? 'bg-amber-50/50' : ''}`}>
+                        <td className="px-4 py-4 text-amber-400 font-bold">{index + 1}.</td>
+                        <td className="px-4 py-4 font-medium text-amber-900">{entry.name}</td>
+                        <td className="px-4 py-4 text-center">
+                          <span className="font-bold text-amber-900">{entry.correct}</span>
+                          <span className="text-amber-400">/{entry.total}</span>
+                        </td>
+                        <td className="px-4 py-4 text-center">
+                          <span className="font-bold text-rose-500">{entry.heartCorrect}</span>
+                          <span className="text-rose-300">/{entry.total}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              
+              {/* Mismatches */}
+              {scoreboardMismatches.length > 0 && (
+                <div className="bg-white rounded-2xl shadow-sm border border-amber-100 p-4">
+                  <h3 className="text-sm font-bold text-amber-900 mb-3">⚠️ Winner Mismatches</h3>
+                  <div className="space-y-2">
+                    {scoreboardMismatches.map((m, i) => (
+                      <div key={i} className="text-sm bg-amber-50 rounded-lg p-3">
+                        <span className="font-medium text-amber-900">{m.category}:</span>
+                        <span className="text-amber-700"> "{m.thisWinner}" vs </span>
+                        <span className="text-amber-900 font-medium">{m.otherBallotName}'s</span>
+                        <span className="text-amber-700"> "{m.otherWinner}"</span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-amber-500 mt-3">
+                    To fix: go to My Ballots and update the winner on the mismatched ballot
                   </p>
                 </div>
-                <button 
-                  onClick={() => setShowScoreboard(false)}
-                  className="text-amber-400 hover:text-amber-600 text-2xl"
-                >
-                  ×
-                </button>
-              </div>
-              
-              <div className="p-6 overflow-y-auto max-h-[calc(80vh-120px)]">
-                {scoreboardData.length === 0 ? (
-                  <p className="text-amber-600 text-center py-8">
-                    No shared ballots yet. Share your ballot with friends to see the scoreboard!
-                  </p>
-                ) : (
-                  <>
-                    {/* Score table */}
-                    <table className="w-full mb-6">
-                      <thead>
-                        <tr className="text-left text-xs text-amber-600 uppercase tracking-wide">
-                          <th className="pb-2"></th>
-                          <th className="pb-2">Name</th>
-                          <th className="pb-2 text-center">Picks</th>
-                          <th className="pb-2 text-center">Hearts</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {scoreboardData.map((entry, index) => (
-                          <tr key={entry.id} className={`border-t border-amber-50 ${index === 0 ? 'bg-amber-50' : ''}`}>
-                            <td className="py-3 pr-2 text-amber-400 font-bold">{index + 1}.</td>
-                            <td className="py-3 font-medium text-amber-900">{entry.name}</td>
-                            <td className="py-3 text-center">
-                              <span className="font-bold text-amber-900">{entry.correct}</span>
-                              <span className="text-amber-500">/{entry.total}</span>
-                            </td>
-                            <td className="py-3 text-center">
-                              <span className="text-rose-500">{entry.heartCorrect}</span>
-                              <span className="text-rose-300">/{entry.total}</span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    
-                    {/* Mismatches */}
-                    {scoreboardMismatches.length > 0 && (
-                      <div className="border-t border-amber-100 pt-4">
-                        <h3 className="text-sm font-bold text-amber-900 mb-2">⚠️ Winner Mismatches</h3>
-                        <div className="space-y-2">
-                          {scoreboardMismatches.map((m, i) => (
-                            <div key={i} className="text-xs bg-amber-50 rounded-lg p-3">
-                              <span className="font-medium text-amber-900">{m.category}:</span>
-                              <span className="text-amber-700"> This ballot says "{m.thisWinner}" but </span>
-                              <span className="text-amber-900 font-medium">{m.otherBallotName}'s</span>
-                              <span className="text-amber-700"> ballot says "{m.otherWinner}"</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-              
-              <div className="px-6 py-4 border-t border-amber-100">
-                <button 
-                  onClick={() => {
-                    loadScoreboard();
-                  }}
-                  className="w-full py-2 text-sm font-medium text-amber-600 hover:text-amber-800"
-                >
-                  ↻ Refresh Scores
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+              )}
+            </>
+          )}
+
+          <button 
+            onClick={loadScoreboard}
+            className="w-full mt-6 py-3 rounded-xl font-medium bg-white border-2 border-amber-200 text-amber-600 hover:bg-amber-50 transition-all"
+          >
+            ↻ Refresh Scores
+          </button>
+        </div>
       </div>
     );
   }
