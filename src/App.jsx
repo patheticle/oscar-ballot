@@ -1,5 +1,123 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabase';
+import { jsPDF } from 'jspdf';
+
+// Generate PDF ballot
+const generateBallotPDF = (name, picks, isBlank = false) => {
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'pt',
+    format: 'letter'
+  });
+  
+  const pageWidth = 612;
+  const pageHeight = 792;
+  const margin = 40;
+  const colWidth = (pageWidth - margin * 3) / 2;
+  
+  // Title
+  doc.setFontSize(24);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Oscar Ballot 2026', pageWidth / 2, 40, { align: 'center' });
+  
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'normal');
+  doc.text('98th Academy Awards', pageWidth / 2, 58, { align: 'center' });
+  
+  // Name line
+  doc.setFontSize(11);
+  if (isBlank) {
+    doc.text('Name: _______________________________', margin, 80);
+  } else {
+    doc.text(`Name: ${name}`, margin, 80);
+  }
+  
+  // Categories in two columns
+  const categories = [
+    'Best Picture', 'Best Director', 'Best Actress', 'Best Actor',
+    'Best Supporting Actress', 'Best Supporting Actor', 'Best Original Screenplay',
+    'Best Adapted Screenplay', 'Best Animated Feature', 'Best International Feature',
+    'Best Documentary Feature', 'Best Original Score', 'Best Original Song',
+    'Best Cinematography', 'Best Film Editing', 'Best Production Design',
+    'Best Costume Design', 'Best Makeup and Hairstyling', 'Best Sound', 'Best Visual Effects'
+  ];
+  
+  const CATEGORIES_DATA = {
+    'Best Picture': ['Bugonia', 'F1', 'Frankenstein', 'Hamnet', 'Marty Supreme', 'One Battle After Another', 'The Secret Agent', 'Sentimental Value', 'Sinners', 'Train Dreams'],
+    'Best Director': ['Chloé Zhao – Hamnet', 'Josh Safdie – Marty Supreme', 'Paul Thomas Anderson', 'Joachim Trier – Sentimental Value', 'Ryan Coogler – Sinners'],
+    'Best Actress': ['Jessie Buckley – Hamnet', 'Rose Byrne', 'Kate Hudson – Song Sung Blue', 'Renate Reinsve – Sentimental Value', 'Emma Stone – Bugonia'],
+    'Best Actor': ['Timothée Chalamet – Marty Supreme', 'Leonardo DiCaprio', 'Ethan Hawke – Blue Moon', 'Michael B. Jordan – Sinners', 'Wagner Moura – The Secret Agent'],
+    'Best Supporting Actress': ['Elle Fanning', 'Inga Ibsdotter Lilleaas', 'Amy Madigan – Weapons', 'Wunmi Mosaku – Sinners', 'Teyana Taylor'],
+    'Best Supporting Actor': ['Benicio Del Toro', 'Jacob Elordi – Frankenstein', 'Delroy Lindo – Sinners', 'Sean Penn', 'Stellan Skarsgård'],
+    'Best Original Screenplay': ['Blue Moon', 'It Was Just an Accident', 'Marty Supreme', 'Sentimental Value', 'Sinners'],
+    'Best Adapted Screenplay': ['Bugonia', 'Frankenstein', 'Hamnet', 'One Battle After Another', 'Train Dreams'],
+    'Best Animated Feature': ['Arco', 'Elio', 'KPop Demon Hunters', 'Little Amélie', 'Zootopia 2'],
+    'Best International Feature': ['It Was Just an Accident', 'The Secret Agent', 'Sentimental Value', 'Sirāt', 'The Voice of Hind Rajab'],
+    'Best Documentary Feature': ['The Alabama Solution', 'Come See Me in the Good Light', 'Cutting Through Rocks', 'Mr. Nobody Against Putin', 'The Perfect Neighbor'],
+    'Best Original Score': ['Bugonia', 'Frankenstein', 'Hamnet', 'One Battle After Another', 'Sinners'],
+    'Best Original Song': ['Dear Me', 'Golden', 'I Lied To You', 'Sweet Dreams of Joy', 'Train Dreams'],
+    'Best Cinematography': ['Bugonia', 'Hamnet', 'One Battle After Another', 'Sinners', 'Train Dreams'],
+    'Best Film Editing': ['Bugonia', 'F1', 'Marty Supreme', 'One Battle After Another', 'Sinners'],
+    'Best Production Design': ['Bugonia', 'Frankenstein', 'Hamnet', 'One Battle After Another', 'Sinners'],
+    'Best Costume Design': ['Frankenstein', 'Hamnet', 'Marty Supreme', 'One Battle After Another', 'Sinners'],
+    'Best Makeup and Hairstyling': ['Frankenstein', 'Hamnet', 'Marty Supreme', 'One Battle After Another', 'Sinners'],
+    'Best Sound': ['Bugonia', 'F1', 'One Battle After Another', 'Sinners', 'Train Dreams'],
+    'Best Visual Effects': ['Bugonia', 'F1', 'Frankenstein', 'One Battle After Another', 'Sinners']
+  };
+  
+  let y = 100;
+  let col = 0;
+  
+  doc.setFontSize(9);
+  
+  categories.forEach((category, index) => {
+    const x = margin + col * (colWidth + margin);
+    
+    // Category name
+    doc.setFont('helvetica', 'bold');
+    doc.text(category, x, y);
+    y += 12;
+    
+    // Nominees
+    doc.setFont('helvetica', 'normal');
+    const nominees = CATEGORIES_DATA[category] || [];
+    nominees.forEach((nominee) => {
+      const shortNominee = nominee.length > 35 ? nominee.substring(0, 35) + '...' : nominee;
+      const willWin = !isBlank && picks[category]?.willWin === nominee;
+      const wantWin = !isBlank && picks[category]?.wantWin === nominee;
+      
+      if (isBlank) {
+        doc.rect(x, y - 7, 8, 8);
+        doc.text(shortNominee, x + 12, y);
+      } else {
+        let prefix = '○';
+        if (willWin && wantWin) prefix = '★';
+        else if (willWin) prefix = '●';
+        else if (wantWin) prefix = '♡';
+        doc.text(`${prefix} ${shortNominee}`, x, y);
+      }
+      y += 10;
+    });
+    
+    y += 8;
+    
+    // Move to second column after 10 categories
+    if (index === 9) {
+      col = 1;
+      y = 100;
+    }
+  });
+  
+  // Legend for filled ballots
+  if (!isBlank) {
+    doc.setFontSize(8);
+    doc.text('● Will Win    ♡ Want to Win    ★ Both', pageWidth / 2, pageHeight - 30, { align: 'center' });
+  }
+  
+  // Save
+  const filename = isBlank ? 'oscar-ballot-blank.pdf' : `oscar-ballot-${name.toLowerCase().replace(/\s+/g, '-')}.pdf`;
+  doc.save(filename);
+};
 
 const CATEGORIES = {
   'Best Picture': [
@@ -461,6 +579,13 @@ export default function App() {
               Make your picks, share with friends, score as you watch!
             </p>
           )}
+          
+          <button
+            onClick={() => generateBallotPDF('', {}, true)}
+            className="mt-8 text-sm text-amber-600 hover:text-amber-800 underline underline-offset-2"
+          >
+            Print Blank Ballot
+          </button>
         </div>
         
         <a 
@@ -832,8 +957,14 @@ export default function App() {
             Edit Ballot
           </button>
           <button
-            onClick={copyLink}
+            onClick={() => generateBallotPDF(ballotData.name, ballotData.picks, false)}
             className="w-full py-3 rounded-xl font-medium bg-white border-2 border-amber-300 text-amber-700 hover:bg-amber-50 transition-all"
+          >
+            Download PDF
+          </button>
+          <button
+            onClick={copyLink}
+            className="w-full py-3 rounded-xl font-medium bg-amber-50 border-2 border-amber-200 text-amber-600 hover:bg-amber-100 transition-all"
           >
             {copied ? '✓ Link Copied!' : 'Share This Ballot'}
           </button>
