@@ -12,27 +12,27 @@ const generateBallotPDF = (name, picks, isBlank = false) => {
   
   const pageWidth = 612;
   const pageHeight = 792;
-  const margin = 40;
-  const colWidth = (pageWidth - margin * 3) / 2;
+  const margin = 30;
+  const colWidth = (pageWidth - margin * 4) / 3;
   
   // Title
-  doc.setFontSize(24);
+  doc.setFontSize(20);
   doc.setFont('helvetica', 'bold');
-  doc.text('Oscar Ballot 2026', pageWidth / 2, 40, { align: 'center' });
+  doc.text('Oscar Ballot 2026', pageWidth / 2, 35, { align: 'center' });
   
-  doc.setFontSize(12);
+  doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  doc.text('98th Academy Awards', pageWidth / 2, 58, { align: 'center' });
+  doc.text('98th Academy Awards', pageWidth / 2, 50, { align: 'center' });
   
   // Name line
-  doc.setFontSize(11);
+  doc.setFontSize(9);
   if (isBlank) {
-    doc.text('Name: _______________________________', margin, 80);
+    doc.text('Name: _______________________________', margin, 68);
   } else {
-    doc.text(`Name: ${name}`, margin, 80);
+    doc.text(`Name: ${name}`, margin, 68);
   }
   
-  // Categories in two columns
+  // Categories in three columns
   const categories = [
     'Best Picture', 'Best Director', 'Best Actress', 'Best Actor',
     'Best Supporting Actress', 'Best Supporting Actor', 'Best Original Screenplay',
@@ -44,15 +44,15 @@ const generateBallotPDF = (name, picks, isBlank = false) => {
   
   const CATEGORIES_DATA = {
     'Best Picture': ['Bugonia', 'F1', 'Frankenstein', 'Hamnet', 'Marty Supreme', 'One Battle After Another', 'The Secret Agent', 'Sentimental Value', 'Sinners', 'Train Dreams'],
-    'Best Director': ['Chloé Zhao – Hamnet', 'Josh Safdie – Marty Supreme', 'Paul Thomas Anderson', 'Joachim Trier – Sentimental Value', 'Ryan Coogler – Sinners'],
-    'Best Actress': ['Jessie Buckley – Hamnet', 'Rose Byrne', 'Kate Hudson – Song Sung Blue', 'Renate Reinsve – Sentimental Value', 'Emma Stone – Bugonia'],
-    'Best Actor': ['Timothée Chalamet – Marty Supreme', 'Leonardo DiCaprio', 'Ethan Hawke – Blue Moon', 'Michael B. Jordan – Sinners', 'Wagner Moura – The Secret Agent'],
-    'Best Supporting Actress': ['Elle Fanning', 'Inga Ibsdotter Lilleaas', 'Amy Madigan – Weapons', 'Wunmi Mosaku – Sinners', 'Teyana Taylor'],
-    'Best Supporting Actor': ['Benicio Del Toro', 'Jacob Elordi – Frankenstein', 'Delroy Lindo – Sinners', 'Sean Penn', 'Stellan Skarsgård'],
+    'Best Director': ['Chloé Zhao – Hamnet', 'Josh Safdie – Marty Supreme', 'Paul Thomas Anderson', 'Joachim Trier', 'Ryan Coogler – Sinners'],
+    'Best Actress': ['Jessie Buckley', 'Rose Byrne', 'Kate Hudson', 'Renate Reinsve', 'Emma Stone'],
+    'Best Actor': ['Timothée Chalamet', 'Leonardo DiCaprio', 'Ethan Hawke', 'Michael B. Jordan', 'Wagner Moura'],
+    'Best Supporting Actress': ['Elle Fanning', 'Inga Ibsdotter Lilleaas', 'Amy Madigan', 'Wunmi Mosaku', 'Teyana Taylor'],
+    'Best Supporting Actor': ['Benicio Del Toro', 'Jacob Elordi', 'Delroy Lindo', 'Sean Penn', 'Stellan Skarsgård'],
     'Best Original Screenplay': ['Blue Moon', 'It Was Just an Accident', 'Marty Supreme', 'Sentimental Value', 'Sinners'],
     'Best Adapted Screenplay': ['Bugonia', 'Frankenstein', 'Hamnet', 'One Battle After Another', 'Train Dreams'],
     'Best Animated Feature': ['Arco', 'Elio', 'KPop Demon Hunters', 'Little Amélie', 'Zootopia 2'],
-    'Best International Feature': ['It Was Just an Accident', 'The Secret Agent', 'Sentimental Value', 'Sirāt', 'The Voice of Hind Rajab'],
+    'Best International Feature': ['France', 'Brazil', 'Norway', 'Spain', 'Tunisia'],
     'Best Documentary Feature': ['The Alabama Solution', 'Come See Me in the Good Light', 'Cutting Through Rocks', 'Mr. Nobody Against Putin', 'The Perfect Neighbor'],
     'Best Original Score': ['Bugonia', 'Frankenstein', 'Hamnet', 'One Battle After Another', 'Sinners'],
     'Best Original Song': ['Dear Me', 'Golden', 'I Lied To You', 'Sweet Dreams of Joy', 'Train Dreams'],
@@ -65,53 +65,55 @@ const generateBallotPDF = (name, picks, isBlank = false) => {
     'Best Visual Effects': ['Bugonia', 'F1', 'Frankenstein', 'One Battle After Another', 'Sinners']
   };
   
-  let y = 100;
-  let col = 0;
+  // Split into 3 columns: 7, 7, 6 categories
+  const colCategories = [
+    categories.slice(0, 7),
+    categories.slice(7, 14),
+    categories.slice(14, 20)
+  ];
   
-  doc.setFontSize(9);
+  doc.setFontSize(8);
   
-  categories.forEach((category, index) => {
-    const x = margin + col * (colWidth + margin);
+  colCategories.forEach((colCats, colIndex) => {
+    const x = margin + colIndex * (colWidth + margin);
+    let y = 85;
     
-    // Category name
-    doc.setFont('helvetica', 'bold');
-    doc.text(category, x, y);
-    y += 12;
-    
-    // Nominees
-    doc.setFont('helvetica', 'normal');
-    const nominees = CATEGORIES_DATA[category] || [];
-    nominees.forEach((nominee) => {
-      const shortNominee = nominee.length > 35 ? nominee.substring(0, 35) + '...' : nominee;
-      const willWin = !isBlank && picks[category]?.willWin === nominee;
-      const wantWin = !isBlank && picks[category]?.wantWin === nominee;
-      
-      if (isBlank) {
-        doc.rect(x, y - 7, 8, 8);
-        doc.text(shortNominee, x + 12, y);
-      } else {
-        let prefix = '○';
-        if (willWin && wantWin) prefix = '★';
-        else if (willWin) prefix = '●';
-        else if (wantWin) prefix = '♡';
-        doc.text(`${prefix} ${shortNominee}`, x, y);
-      }
+    colCats.forEach((category) => {
+      // Category name
+      doc.setFont('helvetica', 'bold');
+      const shortCategory = category.replace('Best ', '');
+      doc.text(shortCategory, x, y);
       y += 10;
+      
+      // Nominees
+      doc.setFont('helvetica', 'normal');
+      const nominees = CATEGORIES_DATA[category] || [];
+      nominees.forEach((nominee) => {
+        const shortNominee = nominee.length > 22 ? nominee.substring(0, 22) + '...' : nominee;
+        const willWin = !isBlank && picks[category]?.willWin?.includes(nominee);
+        const wantWin = !isBlank && picks[category]?.wantWin?.includes(nominee);
+        
+        if (isBlank) {
+          doc.rect(x, y - 6, 6, 6);
+          doc.text(shortNominee, x + 9, y);
+        } else {
+          let prefix = '○';
+          if (willWin && wantWin) prefix = '★';
+          else if (willWin) prefix = '●';
+          else if (wantWin) prefix = '♡';
+          doc.text(`${prefix} ${shortNominee}`, x, y);
+        }
+        y += 9;
+      });
+      
+      y += 6;
     });
-    
-    y += 8;
-    
-    // Move to second column after 10 categories
-    if (index === 9) {
-      col = 1;
-      y = 100;
-    }
   });
   
   // Legend for filled ballots
   if (!isBlank) {
-    doc.setFontSize(8);
-    doc.text('● Will Win    ♡ Want to Win    ★ Both', pageWidth / 2, pageHeight - 30, { align: 'center' });
+    doc.setFontSize(7);
+    doc.text('● Will Win    ♡ Want to Win    ★ Both', pageWidth / 2, pageHeight - 20, { align: 'center' });
   }
   
   // Save
