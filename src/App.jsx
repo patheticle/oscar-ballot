@@ -12,27 +12,43 @@ const generateBallotPDF = (name, picks, isBlank = false) => {
   
   const pageWidth = 612;
   const pageHeight = 792;
-  const margin = 30;
-  const colWidth = (pageWidth - margin * 4) / 3;
+  const margin = 36;
+  const colWidth = (pageWidth - margin * 3) / 2;
+  
+  // Colors
+  const gold = [212, 160, 23];       // #D4A017 - rich gold
+  const darkGold = [180, 130, 20];   // darker gold for text
+  const rose = [225, 29, 72];        // #E11D48 - rose red for hearts
+  const black = [0, 0, 0];
+  
+  // Header banner
+  doc.setFillColor(...gold);
+  doc.rect(0, 0, pageWidth, 60, 'F');
   
   // Title
-  doc.setFontSize(20);
+  doc.setFontSize(24);
   doc.setFont('helvetica', 'bold');
-  doc.text('Oscar Ballot 2026', pageWidth / 2, 35, { align: 'center' });
+  doc.setTextColor(255, 255, 255);
+  doc.text('OSCAR BALLOT 2026', pageWidth / 2, 32, { align: 'center' });
   
-  doc.setFontSize(10);
+  doc.setFontSize(11);
   doc.setFont('helvetica', 'normal');
-  doc.text('98th Academy Awards', pageWidth / 2, 50, { align: 'center' });
+  doc.text('98th Academy Awards', pageWidth / 2, 48, { align: 'center' });
   
   // Name line
-  doc.setFontSize(9);
+  doc.setTextColor(...black);
+  doc.setFontSize(11);
   if (isBlank) {
-    doc.text('Name: _______________________________', margin, 68);
+    doc.text('Name: ', margin, 80);
+    doc.setDrawColor(...gold);
+    doc.setLineWidth(1);
+    doc.line(margin + 40, 80, margin + 250, 80);
   } else {
-    doc.text(`Name: ${name}`, margin, 68);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Name: ${name}`, margin, 80);
   }
   
-  // Categories in three columns
+  // Categories
   const categories = [
     'Best Picture', 'Best Director', 'Best Actress', 'Best Actor',
     'Best Supporting Actress', 'Best Supporting Actor', 'Best Original Screenplay',
@@ -44,7 +60,7 @@ const generateBallotPDF = (name, picks, isBlank = false) => {
   
   const CATEGORIES_DATA = {
     'Best Picture': ['Bugonia', 'F1', 'Frankenstein', 'Hamnet', 'Marty Supreme', 'One Battle After Another', 'The Secret Agent', 'Sentimental Value', 'Sinners', 'Train Dreams'],
-    'Best Director': ['Chloé Zhao – Hamnet', 'Josh Safdie – Marty Supreme', 'Paul Thomas Anderson', 'Joachim Trier', 'Ryan Coogler – Sinners'],
+    'Best Director': ['Chloé Zhao', 'Josh Safdie', 'Paul Thomas Anderson', 'Joachim Trier', 'Ryan Coogler'],
     'Best Actress': ['Jessie Buckley', 'Rose Byrne', 'Kate Hudson', 'Renate Reinsve', 'Emma Stone'],
     'Best Actor': ['Timothée Chalamet', 'Leonardo DiCaprio', 'Ethan Hawke', 'Michael B. Jordan', 'Wagner Moura'],
     'Best Supporting Actress': ['Elle Fanning', 'Inga Ibsdotter Lilleaas', 'Amy Madigan', 'Wunmi Mosaku', 'Teyana Taylor'],
@@ -53,7 +69,7 @@ const generateBallotPDF = (name, picks, isBlank = false) => {
     'Best Adapted Screenplay': ['Bugonia', 'Frankenstein', 'Hamnet', 'One Battle After Another', 'Train Dreams'],
     'Best Animated Feature': ['Arco', 'Elio', 'KPop Demon Hunters', 'Little Amélie', 'Zootopia 2'],
     'Best International Feature': ['France', 'Brazil', 'Norway', 'Spain', 'Tunisia'],
-    'Best Documentary Feature': ['The Alabama Solution', 'Come See Me in the Good Light', 'Cutting Through Rocks', 'Mr. Nobody Against Putin', 'The Perfect Neighbor'],
+    'Best Documentary Feature': ['The Alabama Solution', 'Come See Me', 'Cutting Through Rocks', 'Mr. Nobody Against Putin', 'The Perfect Neighbor'],
     'Best Original Score': ['Bugonia', 'Frankenstein', 'Hamnet', 'One Battle After Another', 'Sinners'],
     'Best Original Song': ['Dear Me', 'Golden', 'I Lied To You', 'Sweet Dreams of Joy', 'Train Dreams'],
     'Best Cinematography': ['Bugonia', 'Hamnet', 'One Battle After Another', 'Sinners', 'Train Dreams'],
@@ -65,56 +81,89 @@ const generateBallotPDF = (name, picks, isBlank = false) => {
     'Best Visual Effects': ['Bugonia', 'F1', 'Frankenstein', 'One Battle After Another', 'Sinners']
   };
   
-  // Split into 3 columns: 7, 7, 6 categories
-  const colCategories = [
-    categories.slice(0, 7),
-    categories.slice(7, 14),
-    categories.slice(14, 20)
-  ];
+  let y = 100;
+  let col = 0;
   
-  doc.setFontSize(8);
-  
-  colCategories.forEach((colCats, colIndex) => {
-    const x = margin + colIndex * (colWidth + margin);
-    let y = 85;
+  categories.forEach((category, index) => {
+    const x = margin + col * (colWidth + margin);
     
-    colCats.forEach((category) => {
-      // Category name
-      doc.setFont('helvetica', 'bold');
-      const shortCategory = category.replace('Best ', '');
-      doc.text(shortCategory, x, y);
-      y += 10;
+    // Category name in gold
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(...darkGold);
+    const shortCategory = category.replace('Best ', '').toUpperCase();
+    doc.text(shortCategory, x, y);
+    y += 11;
+    
+    // Nominees
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(...black);
+    
+    const nominees = CATEGORIES_DATA[category] || [];
+    nominees.forEach((nominee) => {
+      const shortNominee = nominee.length > 28 ? nominee.substring(0, 28) + '...' : nominee;
+      const willWin = !isBlank && picks[category]?.willWin?.includes(nominee);
+      const wantWin = !isBlank && picks[category]?.wantWin?.includes(nominee);
       
-      // Nominees
-      doc.setFont('helvetica', 'normal');
-      const nominees = CATEGORIES_DATA[category] || [];
-      nominees.forEach((nominee) => {
-        const shortNominee = nominee.length > 22 ? nominee.substring(0, 22) + '...' : nominee;
-        const willWin = !isBlank && picks[category]?.willWin?.includes(nominee);
-        const wantWin = !isBlank && picks[category]?.wantWin?.includes(nominee);
-        
-        if (isBlank) {
-          doc.rect(x, y - 6, 6, 6);
-          doc.text(shortNominee, x + 9, y);
-        } else {
-          let prefix = '○';
-          if (willWin && wantWin) prefix = '★';
-          else if (willWin) prefix = '●';
-          else if (wantWin) prefix = '♡';
-          doc.text(`${prefix} ${shortNominee}`, x, y);
-        }
-        y += 9;
-      });
+      // Draw circle
+      const circleX = x + 5;
+      const circleY = y - 3;
+      const radius = 4;
       
-      y += 6;
+      if (isBlank || !willWin) {
+        // Empty circle
+        doc.setDrawColor(...black);
+        doc.setLineWidth(0.5);
+        doc.circle(circleX, circleY, radius, 'S');
+      } else {
+        // Filled circle
+        doc.setFillColor(...black);
+        doc.circle(circleX, circleY, radius, 'F');
+      }
+      
+      // Nominee text
+      doc.text(shortNominee, x + 14, y);
+      
+      // Heart for Want to Win
+      if (!isBlank && wantWin) {
+        doc.setTextColor(...rose);
+        doc.setFontSize(10);
+        doc.text('\u2665', x + colWidth - 15, y);  // ♥
+        doc.setTextColor(...black);
+        doc.setFontSize(9);
+      }
+      
+      y += 11;
     });
+    
+    y += 5;
+    
+    // Move to second column after 10 categories
+    if (index === 9) {
+      col = 1;
+      y = 100;
+    }
   });
   
   // Legend for filled ballots
   if (!isBlank) {
-    doc.setFontSize(7);
-    doc.text('● Will Win    ♡ Want to Win    ★ Both', pageWidth / 2, pageHeight - 20, { align: 'center' });
+    doc.setFontSize(8);
+    doc.setTextColor(...black);
+    doc.setFillColor(...black);
+    doc.circle(pageWidth / 2 - 80, pageHeight - 28, 3, 'F');
+    doc.text('Will Win', pageWidth / 2 - 72, pageHeight - 25);
+    
+    doc.setTextColor(...rose);
+    doc.text('\u2665', pageWidth / 2 - 10, pageHeight - 25);
+    doc.setTextColor(...black);
+    doc.text('Want to Win', pageWidth / 2, pageHeight - 25);
   }
+  
+  // Gold footer line
+  doc.setDrawColor(...gold);
+  doc.setLineWidth(2);
+  doc.line(margin, pageHeight - 15, pageWidth - margin, pageHeight - 15);
   
   // Save
   const filename = isBlank ? 'oscar-ballot-blank.pdf' : `oscar-ballot-${name.toLowerCase().replace(/\s+/g, '-')}.pdf`;
