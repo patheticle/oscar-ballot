@@ -999,49 +999,57 @@ export default function App() {
                   ☰
                 </button>
                 {showMenu && (
-                  <div className="absolute right-0 top-8 bg-white rounded-xl shadow-lg border border-amber-100 py-2 min-w-[160px] z-50">
-                    <button
-                      onClick={() => {
-                        setShowMenu(false);
-                        setPreviousView('view');
-                        loadScoreboard();
-                        setView('scoreboard');
-                      }}
-                      className="w-full text-left px-4 py-2 text-sm text-amber-800 hover:bg-amber-50"
-                    >
-                      🏆 Scoreboard
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowMenu(false);
-                        setVoterName(ballotData.name);
-                        setPicks(ballotData.picks);
-                        setIsOwner(true);
-                        setView('create');
-                      }}
-                      className="w-full text-left px-4 py-2 text-sm text-amber-800 hover:bg-amber-50"
-                    >
-                      ✏️ Edit Ballot
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowMenu(false);
-                        generateBallotPDF(ballotData.name, ballotData.picks, false);
-                      }}
-                      className="w-full text-left px-4 py-2 text-sm text-amber-800 hover:bg-amber-50"
-                    >
-                      📄 Download PDF
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowMenu(false);
-                        copyLink();
-                      }}
-                      className="w-full text-left px-4 py-2 text-sm text-amber-800 hover:bg-amber-50"
-                    >
-                      🔗 {copied ? 'Link Copied!' : 'Share Link'}
-                    </button>
-                  </div>
+                  <>
+                    {/* Overlay to close menu when clicking outside */}
+                    <div 
+                      className="fixed inset-0 z-40" 
+                      onClick={() => setShowMenu(false)}
+                    />
+                    {/* Menu dropdown */}
+                    <div className="absolute right-0 top-8 bg-white rounded-xl shadow-lg border border-amber-100 py-2 min-w-[160px] z-50">
+                      <button
+                        onClick={() => {
+                          setShowMenu(false);
+                          setPreviousView('view');
+                          loadScoreboard();
+                          setView('scoreboard');
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-amber-800 hover:bg-amber-50"
+                      >
+                        🏆 Scoreboard
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowMenu(false);
+                          setVoterName(ballotData.name);
+                          setPicks(ballotData.picks);
+                          setIsOwner(true);
+                          setView('create');
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-amber-800 hover:bg-amber-50"
+                      >
+                        ✏️ Edit Ballot
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowMenu(false);
+                          generateBallotPDF(ballotData.name, ballotData.picks, false);
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-amber-800 hover:bg-amber-50"
+                      >
+                        📄 Download PDF
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowMenu(false);
+                          copyLink();
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-amber-800 hover:bg-amber-50"
+                      >
+                        🔗 {copied ? 'Link Copied!' : 'Share Link'}
+                      </button>
+                    </div>
+                  </>
                 )}
               </div>
             </div>
@@ -1066,14 +1074,6 @@ export default function App() {
             </div>
           </div>
         </div>
-
-        {/* Click outside to close menu */}
-        {showMenu && (
-          <div 
-            className="fixed inset-0 z-20" 
-            onClick={() => setShowMenu(false)}
-          />
-        )}
 
         <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
           {CATEGORY_ORDER.map((category, index) => {
