@@ -311,6 +311,9 @@ export default function App() {
   const [shakeSaveButton, setShakeSaveButton] = useState(false);
   const [myBallots, setMyBallots] = useState([]);
   const [sharedBallots, setSharedBallots] = useState([]);
+  const [showScoreboard, setShowScoreboard] = useState(false);
+  const [scoreboardData, setScoreboardData] = useState([]);
+  const [scoreboardMismatches, setScoreboardMismatches] = useState([]);
 
   // Load saved ballots from localStorage on mount
   useEffect(() => {
@@ -397,9 +400,9 @@ export default function App() {
             setView('view');
             // Save to shared ballots if not one of mine
             saveToSharedBallots(id, data.voter_name);
-            const localWinners = localStorage.getItem(`winners:${id}`);
-            if (localWinners) {
-              setWinners(JSON.parse(localWinners));
+            // Load winners from Supabase
+            if (data.winners) {
+              setWinners(data.winners);
             }
           } else {
             setView('home');
@@ -477,11 +480,104 @@ export default function App() {
     setExpandedCategories(new Set(incompleteCategories));
   };
 
-  const markWinner = (category, nominee) => {
+  const markWinner = async (category, nominee) => {
     const newWinners = { ...winners, [category]: nominee };
     setWinners(newWinners);
     if (ballotId) {
-      localStorage.setItem(`winners:${ballotId}`, JSON.stringify(newWinners));
+      // Save to Supabase
+      try {
+        await supabase
+          .from('ballots')
+          .update({ winners: newWinners })
+          .eq('id', ballotId);
+      } catch (e) {
+        console.error('Error saving winner:', e);
+      }
+    }
+  };
+
+  const removeWinner = async (category) => {
+    const newWinners = { ...winners };
+    delete newWinners[category];
+    setWinners(newWinners);
+    if (ballotId) {
+      try {
+        await supabase
+          .from('ballots')
+          .update({ winners: newWinners })
+          .eq('id', ballotId);
+      } catch (e) {
+        console.error('Error removing winner:', e);
+      }
+    }
+  };
+
+  // Load scoreboard data
+  const loadScoreboard = async () => {
+    const allBallotIds = [
+      ...myBallots.map(b => b.id),
+      ...sharedBallots.map(b => b.id)
+    ];
+    
+    if (allBallotIds.length === 0) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('ballots')
+        .select('id, voter_name, picks, winners')
+        .in('id', allBallotIds);
+      
+      if (error) throw error;
+      
+      // Calculate scores for each ballot based on current ballot's winners
+      const scores = data.map(ballot => {
+        let correct = 0;
+        let heartCorrect = 0;
+        const total = Object.keys(winners).length;
+        
+        Object.entries(winners).forEach(([category, winner]) => {
+          if (ballot.picks[category]?.willWin === winner) {
+            correct++;
+          }
+          if (ballot.picks[category]?.wantWin === winner) {
+            heartCorrect++;
+          }
+        });
+        
+        return {
+          id: ballot.id,
+          name: ballot.voter_name,
+          correct,
+          heartCorrect,
+          total,
+          winners: ballot.winners || {}
+        };
+      });
+      
+      // Sort by correct picks descending
+      scores.sort((a, b) => b.correct - a.correct);
+      setScoreboardData(scores);
+      
+      // Find mismatches
+      const mismatches = [];
+      Object.entries(winners).forEach(([category, winner]) => {
+        data.forEach(ballot => {
+          const theirWinner = ballot.winners?.[category];
+          if (theirWinner && theirWinner !== winner) {
+            mismatches.push({
+              category,
+              thisWinner: winner,
+              otherBallotName: ballot.voter_name,
+              otherWinner: theirWinner,
+              otherBallotId: ballot.id
+            });
+          }
+        });
+      });
+      setScoreboardMismatches(mismatches);
+      
+    } catch (e) {
+      console.error('Error loading scoreboard:', e);
     }
   };
 
@@ -861,9 +957,20 @@ export default function App() {
       <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 pb-8">
         <div className="sticky top-0 z-20 bg-white/90 backdrop-blur-lg border-b border-amber-200/50 px-4 py-4">
           <div className="max-w-2xl mx-auto">
-            <button onClick={goHome} className="text-amber-700 hover:text-amber-900 font-medium text-sm mb-2">
-              ← My Ballots
-            </button>
+            <div className="flex items-center justify-between mb-2">
+              <button onClick={goHome} className="text-amber-700 hover:text-amber-900 font-medium text-sm">
+                ← My Ballots
+              </button>
+              <button 
+                onClick={() => {
+                  loadScoreboard();
+                  setShowScoreboard(true);
+                }}
+                className="text-sm font-medium px-3 py-1 bg-amber-100 hover:bg-amber-200 text-amber-700 rounded-lg transition-colors"
+              >
+                🏆 Scoreboard
+              </button>
+            </div>
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-xl font-black text-amber-900">{ballotData.name}'s Ballot</h1>
@@ -957,12 +1064,7 @@ export default function App() {
                         <span className="text-sm text-amber-700"><span className="font-semibold">Winner:</span> {winner}</span>
                       </div>
                       <button
-                        onClick={() => {
-                          const newWinners = { ...winners };
-                          delete newWinners[category];
-                          setWinners(newWinners);
-                          localStorage.setItem(`winners:${ballotId}`, JSON.stringify(newWinners));
-                        }}
+                        onClick={() => removeWinner(category)}
                         className="text-xs text-stone-400 hover:text-stone-600"
                       >
                         Change
@@ -1000,6 +1102,94 @@ export default function App() {
             {copied ? '✓ Link Copied!' : 'Share This Ballot'}
           </button>
         </div>
+
+        {/* Scoreboard Modal */}
+        {showScoreboard && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl max-w-md w-full max-h-[80vh] overflow-hidden shadow-2xl">
+              <div className="px-6 py-4 border-b border-amber-100 flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-black text-amber-900">🏆 Scoreboard</h2>
+                  <p className="text-sm text-amber-600">
+                    {Object.keys(winners).length}/20 announced • Based on {ballotData.name}'s ballot
+                  </p>
+                </div>
+                <button 
+                  onClick={() => setShowScoreboard(false)}
+                  className="text-amber-400 hover:text-amber-600 text-2xl"
+                >
+                  ×
+                </button>
+              </div>
+              
+              <div className="p-6 overflow-y-auto max-h-[calc(80vh-120px)]">
+                {scoreboardData.length === 0 ? (
+                  <p className="text-amber-600 text-center py-8">
+                    No shared ballots yet. Share your ballot with friends to see the scoreboard!
+                  </p>
+                ) : (
+                  <>
+                    {/* Score table */}
+                    <table className="w-full mb-6">
+                      <thead>
+                        <tr className="text-left text-xs text-amber-600 uppercase tracking-wide">
+                          <th className="pb-2"></th>
+                          <th className="pb-2">Name</th>
+                          <th className="pb-2 text-center">Picks</th>
+                          <th className="pb-2 text-center">Hearts</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {scoreboardData.map((entry, index) => (
+                          <tr key={entry.id} className={`border-t border-amber-50 ${index === 0 ? 'bg-amber-50' : ''}`}>
+                            <td className="py-3 pr-2 text-amber-400 font-bold">{index + 1}.</td>
+                            <td className="py-3 font-medium text-amber-900">{entry.name}</td>
+                            <td className="py-3 text-center">
+                              <span className="font-bold text-amber-900">{entry.correct}</span>
+                              <span className="text-amber-500">/{entry.total}</span>
+                            </td>
+                            <td className="py-3 text-center">
+                              <span className="text-rose-500">{entry.heartCorrect}</span>
+                              <span className="text-rose-300">/{entry.total}</span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    
+                    {/* Mismatches */}
+                    {scoreboardMismatches.length > 0 && (
+                      <div className="border-t border-amber-100 pt-4">
+                        <h3 className="text-sm font-bold text-amber-900 mb-2">⚠️ Winner Mismatches</h3>
+                        <div className="space-y-2">
+                          {scoreboardMismatches.map((m, i) => (
+                            <div key={i} className="text-xs bg-amber-50 rounded-lg p-3">
+                              <span className="font-medium text-amber-900">{m.category}:</span>
+                              <span className="text-amber-700"> This ballot says "{m.thisWinner}" but </span>
+                              <span className="text-amber-900 font-medium">{m.otherBallotName}'s</span>
+                              <span className="text-amber-700"> ballot says "{m.otherWinner}"</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+              
+              <div className="px-6 py-4 border-t border-amber-100">
+                <button 
+                  onClick={() => {
+                    loadScoreboard();
+                  }}
+                  className="w-full py-2 text-sm font-medium text-amber-600 hover:text-amber-800"
+                >
+                  ↻ Refresh Scores
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
