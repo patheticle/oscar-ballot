@@ -190,8 +190,9 @@ export default function App() {
 
   // Save ballot to sharedBallots list (ballots shared with me)
   const saveToSharedBallots = (id, name) => {
-    // Don't save if it's one of my own ballots
-    if (myBallots.some(b => b.id === id)) return;
+    // Don't save if it's one of my own ballots - read directly from localStorage to avoid stale state
+    const myBallotsFromStorage = JSON.parse(localStorage.getItem('myBallots') || '[]');
+    if (myBallotsFromStorage.some(b => b.id === id)) return;
     const existing = sharedBallots.filter(b => b.id !== id);
     const updated = [...existing, { id, name, savedAt: new Date().toISOString() }];
     setSharedBallots(updated);
@@ -463,7 +464,7 @@ export default function App() {
         </div>
         
         <a 
-          href="https://buymeacoffee.com" 
+          href="https://buymeacoffee.com/patheticle" 
           target="_blank" 
           rel="noopener noreferrer"
           className="fixed bottom-4 right-4 bg-amber-100 hover:bg-amber-200 text-amber-800 text-sm font-medium py-2 px-4 rounded-full transition-colors flex items-center gap-2"
@@ -718,7 +719,7 @@ export default function App() {
                     <span className="text-2xl font-black">{score.correct}</span>
                     <span className="text-sm font-medium">/{score.total}</span>
                   </div>
-                  {score.total >= 10 && score.heartCorrect > 0 && (
+                  {score.total > 0 && score.heartCorrect > 0 && (
                     <div className="text-xs text-rose-500 mt-1">
                       ❤️ {score.heartCorrect} heart pick{score.heartCorrect !== 1 ? 's' : ''} won
                     </div>
@@ -837,15 +838,6 @@ export default function App() {
             {copied ? '✓ Link Copied!' : 'Share This Ballot'}
           </button>
         </div>
-        
-        <a 
-          href="https://buymeacoffee.com" 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="fixed bottom-4 right-4 bg-amber-100 hover:bg-amber-200 text-amber-800 text-sm font-medium py-2 px-4 rounded-full transition-colors flex items-center gap-2"
-        >
-          ☕ Buy me a coffee
-        </a>
       </div>
     );
   }
