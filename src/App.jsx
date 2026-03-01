@@ -97,14 +97,35 @@ const generateBallotPDF = (name, picks, isBlank = false) => {
         const maxLen = 35;
         const display = nominee.length > maxLen ? nominee.substring(0, maxLen - 3) + '...' : nominee;
         
+        // Normalize function to compare names regardless of special chars
+        const normalize = (str) => {
+          if (!str) return '';
+          return str
+            .toLowerCase()
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // remove accents
+            .replace(/[–—]/g, '-') // normalize dashes
+            .replace(/['']/g, "'") // normalize quotes
+            .replace(/[""]/g, '"')
+            .trim();
+        };
+        
         // Check if this nominee matches user's pick
         const userPick = picks[category] || {};
-        // Match by checking if the pick starts with the same name
-        const pickName = userPick.willWin ? userPick.willWin.split(' – ')[0].split(' - ')[0] : '';
-        const wantName = userPick.wantWin ? userPick.wantWin.split(' – ')[0].split(' - ')[0] : '';
-        const nomineeName = nominee.split(' - ')[0];
-        const willWin = !isBlank && pickName && nomineeName.includes(pickName);
-        const wantWin = !isBlank && wantName && nomineeName.includes(wantName);
+        const normalizedNominee = normalize(nominee);
+        const normalizedWillWin = normalize(userPick.willWin || '');
+        const normalizedWantWin = normalize(userPick.wantWin || '');
+        
+        // Match if the normalized strings match or one contains the other
+        const willWin = !isBlank && normalizedWillWin && (
+          normalizedNominee === normalizedWillWin ||
+          normalizedNominee.includes(normalizedWillWin.split(' - ')[0]) ||
+          normalizedWillWin.includes(normalizedNominee.split(' - ')[0])
+        );
+        const wantWin = !isBlank && normalizedWantWin && (
+          normalizedNominee === normalizedWantWin ||
+          normalizedNominee.includes(normalizedWantWin.split(' - ')[0]) ||
+          normalizedWantWin.includes(normalizedNominee.split(' - ')[0])
+        );
         
         // Draw circle
         const circleX = x + 4;
