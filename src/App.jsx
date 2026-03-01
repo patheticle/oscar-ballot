@@ -654,7 +654,8 @@ export default function App() {
           <h1 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-600 via-orange-500 to-rose-500 mb-2" style={{ fontFamily: 'system-ui' }}>
             Oscar Ballot
           </h1>
-          <p className="text-lg text-amber-800/70 mb-8">98th Academy Awards • 2026</p>
+          <p className="text-lg text-amber-800/70 mb-3">98th Academy Awards • 2026</p>
+          <p className="text-base font-semibold text-amber-700 mb-8">Make your picks, share with friends, and score as you watch!</p>
           
           <button
             onClick={startNewBallot}
@@ -725,12 +726,6 @@ export default function App() {
                 ))}
               </div>
             </div>
-          )}
-          
-          {myBallots.length === 0 && sharedBallots.length === 0 && (
-            <p className="mt-8 text-sm text-amber-700/60">
-              Make your picks, share with friends, score as you watch!
-            </p>
           )}
           
           <div className="mt-8 text-center">
