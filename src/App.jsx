@@ -773,12 +773,13 @@ export default function App() {
           )}
           
           <div className="mt-8 text-center">
-            <button
-              onClick={() => generateBallotPDF('', {}, true)}
+            <a
+              href="/oscar-ballot-blank.pdf"
+              download="oscar-ballot-blank.pdf"
               className="text-sm text-amber-600 hover:text-amber-800 underline underline-offset-2"
             >
               Old school? Print blank ballot.
-            </button>
+            </a>
             <p className="text-xs text-amber-500/70 mt-1">
               You can also download a filled-in PDF from any completed ballot.
             </p>
