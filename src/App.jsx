@@ -31,12 +31,12 @@ const generateBallotPDF = (name, picks, isBlank = false) => {
   // Name line
   doc.setFontSize(10);
   if (isBlank) {
-    doc.text('Name: ___________________', marginLeft, pageHeight - 732);
+    doc.text('Name: ___________________', marginLeft, 60);
   } else {
-    doc.text(`Name: ${name}`, marginLeft, pageHeight - 732);
+    doc.text('Name: ' + name, marginLeft, 60);
   }
   
-  // Categories data for PDF
+  // Categories data for PDF (shortened for space)
   const PDF_CATEGORIES = {
     'Best Picture': ['Bugonia', 'F1', 'Frankenstein', 'Hamnet', 'Marty Supreme', 'One Battle After Another', 'The Secret Agent', 'Sentimental Value', 'Sinners', 'Train Dreams'],
     'Best Director': ['Chloe Zhao - Hamnet', 'Josh Safdie - Marty Supreme', 'Paul Thomas Anderson - One Battle...', 'Joachim Trier - Sentimental Value', 'Ryan Coogler - Sinners'],
@@ -78,7 +78,7 @@ const generateBallotPDF = (name, picks, isBlank = false) => {
   
   colCategories.forEach((colCats, colIndex) => {
     const x = marginLeft + colIndex * (colWidth + colGap);
-    let y = pageHeight - 80;
+    let y = 80; // Start from top
     
     colCats.forEach((category) => {
       // Category name
@@ -86,7 +86,7 @@ const generateBallotPDF = (name, picks, isBlank = false) => {
       doc.setFontSize(9);
       const shortCat = category.replace('Best ', '');
       doc.text(shortCat, x, y);
-      y -= 13;
+      y += 11;
       
       // Nominees
       doc.setFont('helvetica', 'normal');
@@ -97,14 +97,18 @@ const generateBallotPDF = (name, picks, isBlank = false) => {
         const maxLen = 35;
         const display = nominee.length > maxLen ? nominee.substring(0, maxLen - 3) + '...' : nominee;
         
-        // Check if this nominee matches user's pick (need to match partial names)
+        // Check if this nominee matches user's pick
         const userPick = picks[category] || {};
-        const willWin = !isBlank && userPick.willWin && (userPick.willWin.includes(nominee.split(' - ')[0]) || nominee.includes(userPick.willWin.split(' – ')[0]));
-        const wantWin = !isBlank && userPick.wantWin && (userPick.wantWin.includes(nominee.split(' - ')[0]) || nominee.includes(userPick.wantWin.split(' – ')[0]));
+        // Match by checking if the pick starts with the same name
+        const pickName = userPick.willWin ? userPick.willWin.split(' – ')[0].split(' - ')[0] : '';
+        const wantName = userPick.wantWin ? userPick.wantWin.split(' – ')[0].split(' - ')[0] : '';
+        const nomineeName = nominee.split(' - ')[0];
+        const willWin = !isBlank && pickName && nomineeName.includes(pickName);
+        const wantWin = !isBlank && wantName && nomineeName.includes(wantName);
         
         // Draw circle
         const circleX = x + 4;
-        const circleY = y + 2.5;
+        const circleY = y - 2.5;
         const radius = 3.5;
         
         if (willWin) {
@@ -118,26 +122,32 @@ const generateBallotPDF = (name, picks, isBlank = false) => {
         // Nominee text
         doc.text(display, x + 12, y);
         
-        // Heart for want to win
+        // Heart for want to win - use text since Unicode may not work
         if (wantWin) {
           const textWidth = doc.getTextWidth(display);
-          doc.text(' \u2665', x + 14 + textWidth, y);
+          doc.setFont('zapfdingbats', 'normal');
+          doc.text('v', x + 14 + textWidth, y); // heart in zapfdingbats
+          doc.setFont('helvetica', 'normal');
         }
         
-        y -= 12;
+        y += 10;
       });
       
-      y -= 8;
+      y += 5;
     });
   });
   
-  // Legend for filled ballots
+  // Legend for filled ballots at bottom
   if (!isBlank) {
     doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
     doc.setFillColor(0, 0, 0);
-    doc.circle(pageWidth / 2 - 60, 18, 3.5, 'F');
-    doc.text('Will Win', pageWidth / 2 - 52, 15);
-    doc.text('\u2665 Want to Win', pageWidth / 2 + 10, 15);
+    doc.circle(pageWidth / 2 - 70, pageHeight - 25, 3.5, 'F');
+    doc.text('Will Win', pageWidth / 2 - 62, pageHeight - 22);
+    doc.setFont('zapfdingbats', 'normal');
+    doc.text('v', pageWidth / 2 + 5, pageHeight - 22);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Want to Win', pageWidth / 2 + 15, pageHeight - 22);
   }
   
   // Save
