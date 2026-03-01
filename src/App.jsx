@@ -655,7 +655,7 @@ export default function App() {
             Oscar Ballot
           </h1>
           <p className="text-lg text-amber-800/70 mb-3">98th Academy Awards • 2026</p>
-          <p className="text-base font-semibold text-amber-700 mb-8">Make your picks, share with friends, and score as you watch!</p>
+          <p className="text-sm font-semibold text-amber-700 mb-8">Make your picks, share with friends, score as you watch!</p>
           
           <button
             onClick={startNewBallot}
