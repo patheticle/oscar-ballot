@@ -830,8 +830,8 @@ export default function App() {
                 {isExpanded && (
                   <div className="px-5 pb-5 space-y-2">
                     <div className="flex items-center justify-between mb-3">
-                      <p className="text-xs text-amber-700 font-medium">Tap to pick winner</p>
-                      <p className="text-xs text-amber-700 font-medium">☆ wish they'd win</p>
+                      <p className="text-xs text-amber-700 font-medium">Tap who will win</p>
+                      <p className="text-xs text-amber-700 font-medium">♡ wish they'd win</p>
                     </div>
                     {nominees.map((nominee) => (
                       <NomineeRow 
