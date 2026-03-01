@@ -2,136 +2,98 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from './supabase';
 import { jsPDF } from 'jspdf';
 
+// Helper: draw a filled heart shape centered at (cx, cy) with given size
+const drawPDFHeart = (doc, cx, cy, size) => {
+  doc.setFillColor(0, 0, 0);
+  // Two circles for the top bumps
+  doc.circle(cx - size * 0.5, cy - size * 0.25, size * 0.5, 'F');
+  doc.circle(cx + size * 0.5, cy - size * 0.25, size * 0.5, 'F');
+  // Triangle for the bottom point
+  doc.triangle(
+    cx - size, cy - size * 0.25,
+    cx + size, cy - size * 0.25,
+    cx,        cy + size * 0.85,
+    'F'
+  );
+};
+
 // Generate PDF ballot
+// NOTE: Uses CATEGORIES and CATEGORY_ORDER defined below — safe because this
+// function is only ever *called* after module-level code has run.
 const generateBallotPDF = (name, picks, isBlank = false) => {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'pt',
     format: 'letter'
   });
-  
+
   const pageWidth = 612;
-  const pageHeight = 792;
-  
-  // Adjusted margins
   const marginLeft = 22;
   const marginRight = 15;
   const colGap = 12;
   const colWidth = (pageWidth - marginLeft - marginRight - colGap * 2) / 3;
-  
-  // Title
-  doc.setFontSize(16);
+
+  // ── Title ──────────────────────────────────────────────────────────────────
   doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
   doc.text('OSCAR BALLOT 2026', pageWidth / 2, 30, { align: 'center' });
-  
-  doc.setFontSize(9);
+
   doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
   doc.text('98th Academy Awards', pageWidth / 2, 44, { align: 'center' });
-  
-  // Name line
+
+  // ── Name line (with inline legend for filled ballots) ──────────────────────
   doc.setFontSize(10);
   if (isBlank) {
     doc.text('Name: ___________________', marginLeft, 60);
   } else {
     doc.text('Name: ' + name, marginLeft, 60);
+    // Legend: ♥ = Want to Win — positioned right side of name line
+    doc.setFontSize(8);
+    const legendX = pageWidth - marginRight - 72;
+    drawPDFHeart(doc, legendX, 57, 3);
+    doc.text('= Want to Win', legendX + 7, 60);
   }
-  
-  // Categories data for PDF (shortened for space)
-  const PDF_CATEGORIES = {
-    'Best Picture': ['Bugonia', 'F1', 'Frankenstein', 'Hamnet', 'Marty Supreme', 'One Battle After Another', 'The Secret Agent', 'Sentimental Value', 'Sinners', 'Train Dreams'],
-    'Best Director': ['Chloe Zhao - Hamnet', 'Josh Safdie - Marty Supreme', 'Paul Thomas Anderson - One Battle...', 'Joachim Trier - Sentimental Value', 'Ryan Coogler - Sinners'],
-    'Best Actress': ['Jessie Buckley - Hamnet', 'Rose Byrne - If I Had Legs...', 'Kate Hudson - Song Sung Blue', 'Renate Reinsve - Sentimental Value', 'Emma Stone - Bugonia'],
-    'Best Actor': ['Timothee Chalamet - Marty Supreme', 'Leonardo DiCaprio - One Battle...', 'Ethan Hawke - Blue Moon', 'Michael B. Jordan - Sinners', 'Wagner Moura - The Secret Agent'],
-    'Best Supporting Actress': ['Elle Fanning - Sentimental Value', 'Inga Ibsdotter Lilleaas - Sentim...', 'Amy Madigan - Weapons', 'Wunmi Mosaku - Sinners', 'Teyana Taylor - One Battle...'],
-    'Best Supporting Actor': ['Benicio Del Toro - One Battle...', 'Jacob Elordi - Frankenstein', 'Delroy Lindo - Sinners', 'Sean Penn - One Battle...', 'Stellan Skarsgard - Sentimental...'],
-    'Best Original Screenplay': ['Blue Moon', 'It Was Just an Accident', 'Marty Supreme', 'Sentimental Value', 'Sinners'],
-    'Best Adapted Screenplay': ['Bugonia', 'Frankenstein', 'Hamnet', 'One Battle After Another', 'Train Dreams'],
-    'Best Animated Feature': ['Arco', 'Elio', 'KPop Demon Hunters', 'Little Amelie', 'Zootopia 2'],
-    'Best International Feature': ['It Was Just an Accident (France)', 'The Secret Agent (Brazil)', 'Sentimental Value (Norway)', 'Sirat (Spain)', 'Voice of Hind Rajab (Tunisia)'],
-    'Best Documentary Feature': ['The Alabama Solution', 'Come See Me in the Good Light', 'Cutting Through Rocks', 'Mr. Nobody Against Putin', 'The Perfect Neighbor'],
-    'Best Original Score': ['Bugonia', 'Frankenstein', 'Hamnet', 'One Battle After Another', 'Sinners'],
-    'Best Original Song': ['"Dear Me" - Diane Warren...', '"Golden" - KPop Demon Hunters', '"I Lied To You" - Sinners', '"Sweet Dreams of Joy" - Viva Verdi', '"Train Dreams" - Train Dreams'],
-    'Best Cinematography': ['Bugonia', 'Hamnet', 'One Battle After Another', 'Sinners', 'Train Dreams'],
-    'Best Film Editing': ['Bugonia', 'F1', 'Marty Supreme', 'One Battle After Another', 'Sinners'],
-    'Best Production Design': ['Bugonia', 'Frankenstein', 'Hamnet', 'One Battle After Another', 'Sinners'],
-    'Best Costume Design': ['Frankenstein', 'Hamnet', 'Marty Supreme', 'One Battle After Another', 'Sinners'],
-    'Best Makeup and Hairstyling': ['Frankenstein', 'Hamnet', 'Marty Supreme', 'One Battle After Another', 'Sinners'],
-    'Best Sound': ['Bugonia', 'F1', 'One Battle After Another', 'Sinners', 'Train Dreams'],
-    'Best Visual Effects': ['Bugonia', 'F1', 'Frankenstein', 'One Battle After Another', 'Sinners']
-  };
-  
-  const categoryOrder = [
-    'Best Picture', 'Best Director', 'Best Actress', 'Best Actor',
-    'Best Supporting Actress', 'Best Supporting Actor', 'Best Original Screenplay',
-    'Best Adapted Screenplay', 'Best Animated Feature', 'Best International Feature',
-    'Best Documentary Feature', 'Best Original Score', 'Best Original Song',
-    'Best Cinematography', 'Best Film Editing', 'Best Production Design',
-    'Best Costume Design', 'Best Makeup and Hairstyling', 'Best Sound', 'Best Visual Effects'
-  ];
-  
-  // Split into 3 columns: 7, 7, 6
+
+  // ── 3-column category layout ───────────────────────────────────────────────
+  // Split 20 categories: 7 | 7 | 6
   const colCategories = [
-    categoryOrder.slice(0, 7),
-    categoryOrder.slice(7, 14),
-    categoryOrder.slice(14, 20)
+    CATEGORY_ORDER.slice(0, 7),
+    CATEGORY_ORDER.slice(7, 14),
+    CATEGORY_ORDER.slice(14, 20),
   ];
-  
+
   colCategories.forEach((colCats, colIndex) => {
     const x = marginLeft + colIndex * (colWidth + colGap);
-    let y = 80; // Start from top
-    
+    let y = 80;
+
     colCats.forEach((category) => {
-      // Category name
+      // Category header
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(9);
-      const shortCat = category.replace('Best ', '');
-      doc.text(shortCat, x, y);
-      y += 11;
-      
-      // Nominees
+      doc.text(category.replace('Best ', ''), x, y);
+      y += 13;
+
+      // Nominees — use CATEGORIES directly so picks match exactly
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);
-      const nominees = PDF_CATEGORIES[category] || [];
-      
+      const nominees = CATEGORIES[category] || [];
+
       nominees.forEach((nominee) => {
-        const maxLen = 35;
-        const display = nominee.length > maxLen ? nominee.substring(0, maxLen - 3) + '...' : nominee;
-        
-        // Normalize function to compare names regardless of special chars
-        const normalize = (str) => {
-          if (!str) return '';
-          return str
-            .toLowerCase()
-            .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // remove accents
-            .replace(/[–—]/g, '-') // normalize dashes
-            .replace(/['']/g, "'") // normalize quotes
-            .replace(/[""]/g, '"')
-            .trim();
-        };
-        
-        // Check if this nominee matches user's pick
-        const userPick = picks[category] || {};
-        const normalizedNominee = normalize(nominee);
-        const normalizedWillWin = normalize(userPick.willWin || '');
-        const normalizedWantWin = normalize(userPick.wantWin || '');
-        
-        // Match if the normalized strings match or one contains the other
-        const willWin = !isBlank && normalizedWillWin && (
-          normalizedNominee === normalizedWillWin ||
-          normalizedNominee.includes(normalizedWillWin.split(' - ')[0]) ||
-          normalizedWillWin.includes(normalizedNominee.split(' - ')[0])
-        );
-        const wantWin = !isBlank && normalizedWantWin && (
-          normalizedNominee === normalizedWantWin ||
-          normalizedNominee.includes(normalizedWantWin.split(' - ')[0]) ||
-          normalizedWantWin.includes(normalizedNominee.split(' - ')[0])
-        );
-        
-        // Draw circle
+        // Truncate for display only; matching uses the full original string
+        const maxLen = 33;
+        const display = nominee.length > maxLen
+          ? nominee.substring(0, maxLen - 3) + '...'
+          : nominee;
+
+        const userPick = isBlank ? {} : (picks[category] || {});
+        const willWin = !isBlank && userPick.willWin === nominee;
+        const wantWin = !isBlank && userPick.wantWin === nominee;
+
+        // Radio circle (filled = will win, outline = not picked)
         const circleX = x + 4;
         const circleY = y - 2.5;
         const radius = 3.5;
-        
         if (willWin) {
           doc.setFillColor(0, 0, 0);
           doc.circle(circleX, circleY, radius, 'F');
@@ -139,49 +101,27 @@ const generateBallotPDF = (name, picks, isBlank = false) => {
           doc.setDrawColor(0, 0, 0);
           doc.circle(circleX, circleY, radius, 'S');
         }
-        
+
         // Nominee text
         doc.text(display, x + 12, y);
-        
-        // Heart for want to win - draw a heart shape
+
+        // Heart to the right of the text for want-to-win
         if (wantWin) {
           const textWidth = doc.getTextWidth(display);
-          const hx = x + 16 + textWidth;
-          const hy = y - 2;
-          const size = 3;
-          // Draw filled heart using bezier curves
-          doc.setFillColor(0, 0, 0);
-          doc.circle(hx - size/2, hy - size/3, size/2, 'F');
-          doc.circle(hx + size/2, hy - size/3, size/2, 'F');
-          doc.triangle(hx - size, hy - size/3, hx + size, hy - size/3, hx, hy + size, 'F');
+          drawPDFHeart(doc, x + 16 + textWidth + 3, y - 2, 3);
         }
-        
-        y += 10;
+
+        y += 12;
       });
-      
-      y += 5;
+
+      y += 8; // gap between categories
     });
   });
-  
-  // Legend for filled ballots at bottom
-  if (!isBlank) {
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    doc.setFillColor(0, 0, 0);
-    doc.circle(pageWidth / 2 - 70, pageHeight - 25, 3.5, 'F');
-    doc.text('Will Win', pageWidth / 2 - 62, pageHeight - 22);
-    // Draw heart for legend
-    const hx = pageWidth / 2 + 10;
-    const hy = pageHeight - 25;
-    const size = 3;
-    doc.circle(hx - size/2, hy - size/3, size/2, 'F');
-    doc.circle(hx + size/2, hy - size/3, size/2, 'F');
-    doc.triangle(hx - size, hy - size/3, hx + size, hy - size/3, hx, hy + size, 'F');
-    doc.text('Want to Win', pageWidth / 2 + 20, pageHeight - 22);
-  }
-  
-  // Save
-  const filename = isBlank ? 'oscar-ballot-blank.pdf' : `oscar-ballot-${name.toLowerCase().replace(/\s+/g, '-')}.pdf`;
+
+  // ── Save ───────────────────────────────────────────────────────────────────
+  const filename = isBlank
+    ? 'oscar-ballot-blank.pdf'
+    : `oscar-ballot-${name.toLowerCase().replace(/\s+/g, '-')}.pdf`;
   doc.save(filename);
 };
 
