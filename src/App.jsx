@@ -306,6 +306,7 @@ export default function App() {
   const [scoreboardMismatches, setScoreboardMismatches] = useState([]);
   const [scoreboardSource, setScoreboardSource] = useState(null);
   const [previousView, setPreviousView] = useState(null);
+  const [refreshStatus, setRefreshStatus] = useState('idle'); // 'idle' | 'loading' | 'done'
 
   // Load saved ballots from localStorage on mount
   useEffect(() => {
@@ -505,7 +506,8 @@ export default function App() {
   };
 
   // Load scoreboard data
-  const loadScoreboard = async () => {
+  const loadScoreboard = async (fromButton = false) => {
+    if (fromButton) setRefreshStatus('loading');
     const allBallotIds = [
       ...myBallots.map(b => b.id),
       ...sharedBallots.map(b => b.id)
@@ -595,9 +597,13 @@ export default function App() {
         });
       });
       setScoreboardMismatches(mismatches);
-      
+      if (fromButton) {
+        setRefreshStatus('done');
+        setTimeout(() => setRefreshStatus('idle'), 2000);
+      }
     } catch (e) {
       console.error('Error loading scoreboard:', e);
+      if (fromButton) setRefreshStatus('idle');
     }
   };
 
@@ -1269,10 +1275,17 @@ export default function App() {
           )}
 
           <button 
-            onClick={loadScoreboard}
-            className="w-full mt-6 py-3 rounded-xl font-medium bg-white border-2 border-amber-200 text-amber-600 hover:bg-amber-50 transition-all"
+            onClick={() => loadScoreboard(true)}
+            disabled={refreshStatus === 'loading'}
+            className={`w-full mt-6 py-3 rounded-xl font-medium border-2 transition-all ${
+              refreshStatus === 'done'
+                ? 'bg-green-50 border-green-300 text-green-600'
+                : 'bg-white border-amber-200 text-amber-600 hover:bg-amber-50 disabled:opacity-50'
+            }`}
           >
-            ↻ Refresh Scores
+            {refreshStatus === 'loading' && '↻ Refreshing...'}
+            {refreshStatus === 'done' && '✓ Scores updated!'}
+            {refreshStatus === 'idle' && '↻ Refresh Scores'}
           </button>
         </div>
       </div>
