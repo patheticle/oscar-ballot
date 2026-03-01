@@ -56,11 +56,11 @@ const generateBallotPDF = (name, picks, isBlank = false) => {
   }
 
   // ── 3-column category layout ───────────────────────────────────────────────
-  // Split 20 categories: 7 | 7 | 6
+  // Split 24 categories: 8 | 8 | 8
   const colCategories = [
-    CATEGORY_ORDER.slice(0, 7),
-    CATEGORY_ORDER.slice(7, 14),
-    CATEGORY_ORDER.slice(14, 20),
+    CATEGORY_ORDER.slice(0, 8),
+    CATEGORY_ORDER.slice(8, 16),
+    CATEGORY_ORDER.slice(16, 24),
   ];
 
   colCategories.forEach((colCats, colIndex) => {
@@ -204,6 +204,20 @@ const CATEGORIES = {
   ],
   'Best Visual Effects': [
     'Avatar: Fire and Ash', 'F1', 'Jurassic World Rebirth', 'The Lost Bus', 'Sinners'
+  ],
+  'Best Casting': [
+    'Nina Gold – Hamnet', 'Jennifer Venditti – Marty Supreme', 'Cassandra Kulukundis – One Battle After Another',
+    'Gabriel Domingues – The Secret Agent', 'Francine Maisler – Sinners'
+  ],
+  'Best Live Action Short': [
+    "Butcher's Stain", 'A Friend of Dorothy', "Jane Austen's Period Drama", 'The Singers', 'Two People Exchanging Saliva'
+  ],
+  'Best Animated Short': [
+    'Butterfly', 'Forevergreen', 'The Girl Who Cried Pearls', 'Retirement Plan', 'The Three Sisters'
+  ],
+  'Best Documentary Short': [
+    'All the Empty Rooms', 'Armed Only with a Camera', 'Children No More: Were and Are Gone',
+    'The Devil Is Busy', 'Perfectly a Strangeness'
   ]
 };
 
@@ -212,7 +226,8 @@ const CATEGORY_ORDER = [
   'Best Supporting Actress', 'Best Supporting Actor', 'Best Original Screenplay', 'Best Adapted Screenplay',
   'Best Animated Feature', 'Best International Feature', 'Best Documentary Feature',
   'Best Original Score', 'Best Original Song', 'Best Cinematography', 'Best Film Editing',
-  'Best Production Design', 'Best Costume Design', 'Best Makeup and Hairstyling', 'Best Sound', 'Best Visual Effects'
+  'Best Production Design', 'Best Costume Design', 'Best Makeup and Hairstyling', 'Best Sound', 'Best Visual Effects',
+  'Best Casting', 'Best Live Action Short', 'Best Animated Short', 'Best Documentary Short'
 ];
 
 const generateId = () => Math.random().toString(36).substring(2, 10);
