@@ -1208,6 +1208,7 @@ export default function App() {
         <div className="max-w-2xl mx-auto px-4 py-6">
           <div className="text-center mb-6">
             <h1 className="text-3xl font-black text-amber-900">🏆 Scoreboard</h1>
+            <p className="text-sm text-amber-600 mt-1">See your scores and everyone who shared their ballot with you</p>
             {scoreboardSource ? (
               <p className="text-sm text-amber-600 mt-1">
                 {scoreboardSource.count}/20 announced • Winners from {scoreboardSource.name}'s ballot
