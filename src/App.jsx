@@ -122,12 +122,17 @@ const generateBallotPDF = (name, picks, isBlank = false) => {
         // Nominee text
         doc.text(display, x + 12, y);
         
-        // Heart for want to win - use text since Unicode may not work
+        // Heart for want to win - draw a heart shape
         if (wantWin) {
           const textWidth = doc.getTextWidth(display);
-          doc.setFont('zapfdingbats', 'normal');
-          doc.text('v', x + 14 + textWidth, y); // heart in zapfdingbats
-          doc.setFont('helvetica', 'normal');
+          const hx = x + 16 + textWidth;
+          const hy = y - 2;
+          const size = 3;
+          // Draw filled heart using bezier curves
+          doc.setFillColor(0, 0, 0);
+          doc.circle(hx - size/2, hy - size/3, size/2, 'F');
+          doc.circle(hx + size/2, hy - size/3, size/2, 'F');
+          doc.triangle(hx - size, hy - size/3, hx + size, hy - size/3, hx, hy + size, 'F');
         }
         
         y += 10;
@@ -144,10 +149,14 @@ const generateBallotPDF = (name, picks, isBlank = false) => {
     doc.setFillColor(0, 0, 0);
     doc.circle(pageWidth / 2 - 70, pageHeight - 25, 3.5, 'F');
     doc.text('Will Win', pageWidth / 2 - 62, pageHeight - 22);
-    doc.setFont('zapfdingbats', 'normal');
-    doc.text('v', pageWidth / 2 + 5, pageHeight - 22);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Want to Win', pageWidth / 2 + 15, pageHeight - 22);
+    // Draw heart for legend
+    const hx = pageWidth / 2 + 10;
+    const hy = pageHeight - 25;
+    const size = 3;
+    doc.circle(hx - size/2, hy - size/3, size/2, 'F');
+    doc.circle(hx + size/2, hy - size/3, size/2, 'F');
+    doc.triangle(hx - size, hy - size/3, hx + size, hy - size/3, hx, hy + size, 'F');
+    doc.text('Want to Win', pageWidth / 2 + 20, pageHeight - 22);
   }
   
   // Save
