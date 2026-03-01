@@ -80,11 +80,21 @@ const generateBallotPDF = (name, picks, isBlank = false) => {
       const nominees = CATEGORIES[category] || [];
 
       nominees.forEach((nominee) => {
-        // Truncate for display only; matching uses the full original string
+        // Normalize display string for PDF — jsPDF's built-in Helvetica doesn't
+        // support accented/special chars (e.g. ā, é) and renders them as
+        // spaced-out gibberish. Strip diacritics for display only; matching
+        // still uses the original nominee string.
+        const pdfSafe = (str) => str
+          .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // strip diacritics
+          .replace(/[–—]/g, '-')  // em/en dash → hyphen
+          .replace(/['']/g, "'")  // smart apostrophes
+          .replace(/[""]/g, '"'); // smart quotes
+
         const maxLen = 33;
-        const display = nominee.length > maxLen
-          ? nominee.substring(0, maxLen - 3) + '...'
-          : nominee;
+        const safe = pdfSafe(nominee);
+        const display = safe.length > maxLen
+          ? safe.substring(0, maxLen - 3) + '...'
+          : safe;
 
         const userPick = isBlank ? {} : (picks[category] || {});
         const willWin = !isBlank && userPick.willWin === nominee;
