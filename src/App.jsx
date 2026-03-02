@@ -313,6 +313,15 @@ export default function App() {
   const [previousView, setPreviousView] = useState(null);
   const [refreshStatus, setRefreshStatus] = useState('idle'); // 'idle' | 'loading' | 'done'
 
+  const [showHeartTip, setShowHeartTip] = useState(() => {
+  return localStorage.getItem('heartTipDismissed') !== 'true';
+});
+
+const dismissHeartTip = () => {
+  setShowHeartTip(false);
+  localStorage.setItem('heartTipDismissed', 'true');
+};
+
   // Load saved ballots from localStorage on mount
   useEffect(() => {
     const saved = localStorage.getItem('myBallots');
@@ -324,6 +333,7 @@ export default function App() {
       setSharedBallots(JSON.parse(shared));
     }
   }, []);
+
 
   // Save ballot to myBallots list
   const saveToMyBallots = (id, name) => {
@@ -796,6 +806,21 @@ export default function App() {
         </div>
 
         <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
+
+            {showHeartTip && (
+              <div className="flex items-center justify-between gap-3 bg-rose-50 border border-rose-200 rounded-2xl px-4 py-3">
+               <p className="text-sm text-rose-700">
+               Want someone to win but don't think they will? That's your ♡ pick.
+              </p>
+              <button
+               onClick={dismissHeartTip}
+               className="flex-shrink-0 text-rose-400 hover:text-rose-600 text-xl leading-none"
+               aria-label="Dismiss"
+             >
+               ×
+               </button>
+              </div>
+            )}
           {CATEGORY_ORDER.map((category) => {
             const nominees = CATEGORIES[category];
             const isExpanded = expandedCategories.has(category);
