@@ -1289,29 +1289,37 @@ const dismissHeartTip = () => {
                 <table className="w-full">
                   <thead>
                     <tr className="text-left text-xs text-amber-600 uppercase tracking-wide bg-amber-50">
-                      <th className="px-4 py-3"></th>
-                      <th className="px-4 py-3">Name</th>
-                      <th className="px-4 py-3 text-center">Points</th>
-                      <th className="px-4 py-3 text-center">Picks</th>
-                      <th className="px-4 py-3 text-center">❤️</th>
+                      <th className="pl-3 pr-1 py-3 w-6"></th>
+                      <th className="px-2 py-3">Name</th>
+                      <th className="px-2 py-3 text-center">Picks</th>
+                      <th className="px-2 py-3 text-center">❤️</th>
+                      <th className="px-2 py-3 text-center">
+                        <span className="flex items-center justify-center gap-1">
+                          Pts
+                          <button
+                            onClick={() => document.getElementById('points-explainer').scrollIntoView({ behavior: 'smooth' })}
+                            className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-200 text-amber-700 text-xs font-bold leading-none hover:bg-amber-300 transition-colors"
+                            title="How are points calculated?"
+                          >?</button>
+                        </span>
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {scoreboardData.map((entry, index) => (
                       <tr key={entry.id} className={`border-t border-amber-50 ${index === 0 ? 'bg-amber-50/50' : ''}`}>
-                        <td className="px-4 py-4 text-amber-400 font-bold">{index + 1}.</td>
-                        <td className="px-4 py-4 font-medium text-amber-900">{entry.name}</td>
-                        <td className="px-4 py-4 text-center">
-                          <span className="font-bold text-amber-900">{entry.points}</span>
-                          <span className="text-amber-400 text-xs"> pts</span>
+                        <td className="pl-3 pr-1 py-3 text-amber-400 font-bold text-sm">{index + 1}.</td>
+                        <td className="px-2 py-3 font-medium text-amber-900 text-sm">{entry.name}</td>
+                        <td className="px-2 py-3 text-center">
+                          <span className="font-bold text-amber-900 text-sm">{entry.correct}</span>
+                          <span className="text-amber-400 text-xs">/{entry.total}</span>
                         </td>
-                        <td className="px-4 py-4 text-center">
-                          <span className="font-bold text-amber-900">{entry.correct}</span>
-                          <span className="text-amber-400">/{entry.total}</span>
+                        <td className="px-2 py-3 text-center">
+                          <span className="font-bold text-rose-500 text-sm">{entry.heartCorrect}</span>
+                          <span className="text-rose-300 text-xs">/{entry.total}</span>
                         </td>
-                        <td className="px-4 py-4 text-center">
-                          <span className="font-bold text-rose-500">{entry.heartCorrect}</span>
-                          <span className="text-rose-300">/{entry.total}</span>
+                        <td className="px-2 py-3 text-center">
+                          <span className="font-bold text-amber-900 text-sm">{entry.points}</span>
                         </td>
                       </tr>
                     ))}
@@ -1321,7 +1329,7 @@ const dismissHeartTip = () => {
               
               {/* Mismatches */}
               {scoreboardMismatches.length > 0 && (
-                <div className="bg-white rounded-2xl shadow-sm border border-amber-100 p-4">
+                <div className="bg-white rounded-2xl shadow-sm border border-amber-100 p-4 mb-6">
                   <h3 className="text-sm font-bold text-amber-900 mb-3">⚠️ Winner Mismatches</h3>
                   <div className="space-y-2">
                     {scoreboardMismatches.map((m, i) => (
@@ -1338,6 +1346,28 @@ const dismissHeartTip = () => {
                   </p>
                 </div>
               )}
+
+              {/* Points explainer */}
+              <div id="points-explainer" className="bg-white rounded-2xl shadow-sm border border-amber-100 p-5 mb-6">
+                <h3 className="text-sm font-bold text-amber-900 mb-1">🏅 How points work</h3>
+                <p className="text-xs text-amber-600 mb-4">Points are optional — they're a fun way to reward harder-to-predict categories. Bigger awards are worth more, up to 1,000 total points.</p>
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-amber-500 uppercase tracking-wide border-b border-amber-100">
+                      <th className="text-left pb-2">Category</th>
+                      <th className="text-right pb-2">Pts</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {CATEGORY_ORDER.map((cat) => (
+                      <tr key={cat} className="border-b border-amber-50">
+                        <td className="py-1.5 text-amber-800">{cat.replace('Best ', '')}</td>
+                        <td className="py-1.5 text-right font-bold text-amber-900">{CATEGORY_WEIGHTS[cat]}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </>
           )}
 
