@@ -1350,7 +1350,7 @@ const dismissHeartTip = () => {
               {/* Points explainer */}
               <div id="points-explainer" className="bg-white rounded-2xl shadow-sm border border-amber-100 p-5 mb-6">
                 <h3 className="text-sm font-bold text-amber-900 mb-1">🏅 How points work</h3>
-                <p className="text-xs text-amber-600 mb-4">Points are optional — they're a fun way to reward harder-to-predict categories. Bigger awards are worth more, up to 1,000 total points.</p>
+                <p className="text-xs text-amber-600 mb-4">Points are optional, but they can make things more interesting. Bigger awards are worth more points. The max score is 1,000 points.</p>
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="text-amber-500 uppercase tracking-wide border-b border-amber-100">
