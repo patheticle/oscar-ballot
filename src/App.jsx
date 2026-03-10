@@ -230,6 +230,33 @@ const CATEGORY_ORDER = [
   'Best Casting', 'Best Live Action Short', 'Best Animated Short', 'Best Documentary Short'
 ];
 
+const CATEGORY_WEIGHTS = {
+  'Best Picture': 100,
+  'Best Director': 80,
+  'Best Actor': 80,
+  'Best Actress': 80,
+  'Best Supporting Actor': 50,
+  'Best Supporting Actress': 50,
+  'Best Original Screenplay': 50,
+  'Best Adapted Screenplay': 50,
+  'Best Animated Feature': 50,
+  'Best International Feature': 50,
+  'Best Film Editing': 40,
+  'Best Cinematography': 40,
+  'Best Visual Effects': 25,
+  'Best Costume Design': 25,
+  'Best Original Score': 25,
+  'Best Sound': 25,
+  'Best Original Song': 25,
+  'Best Makeup and Hairstyling': 25,
+  'Best Production Design': 25,
+  'Best Casting': 25,
+  'Best Animated Short': 20,
+  'Best Documentary Feature': 20,
+  'Best Documentary Short': 20,
+  'Best Live Action Short': 20,
+};
+
 const generateId = () => Math.random().toString(36).substring(2, 10);
 
 function OscarStatuette({ className = "h-7 text-amber-500" }) {
@@ -566,11 +593,14 @@ const dismissHeartTip = () => {
       const scores = data.map(ballot => {
         let correct = 0;
         let heartCorrect = 0;
+        let points = 0;
         const total = Object.keys(sourceWinners).length;
         
         Object.entries(sourceWinners).forEach(([category, winner]) => {
+          const weight = CATEGORY_WEIGHTS[category] || 1;
           if (ballot.picks[category]?.willWin === winner) {
             correct++;
+            points += weight;
           }
           if (ballot.picks[category]?.wantWin === winner) {
             heartCorrect++;
@@ -582,15 +612,16 @@ const dismissHeartTip = () => {
           name: ballot.voter_name,
           correct,
           heartCorrect,
+          points,
           total,
           winners: ballot.winners || {}
         };
       });
       
-      // Sort by correct picks descending, then by hearts
+      // Sort by weighted points descending, then by raw correct picks
       scores.sort((a, b) => {
-        if (b.correct !== a.correct) return b.correct - a.correct;
-        return b.heartCorrect - a.heartCorrect;
+        if (b.points !== a.points) return b.points - a.points;
+        return b.correct - a.correct;
       });
       setScoreboardData(scores);
       
@@ -630,21 +661,26 @@ const dismissHeartTip = () => {
   };
 
   const calculateScore = () => {
-    if (!ballotData) return { correct: 0, heartCorrect: 0, total: 0 };
+    if (!ballotData) return { correct: 0, heartCorrect: 0, total: 0, points: 0, maxPoints: 0 };
     let correct = 0;
     let heartCorrect = 0;
+    let points = 0;
+    let maxPoints = 0;
     let total = Object.keys(winners).length;
     
     Object.entries(winners).forEach(([category, winner]) => {
+      const weight = CATEGORY_WEIGHTS[category] || 1;
+      maxPoints += weight;
       if (ballotData.picks[category]?.willWin === winner) {
         correct++;
+        points += weight;
       }
       if (ballotData.picks[category]?.wantWin === winner) {
         heartCorrect++;
       }
     });
     
-    return { correct, heartCorrect, total };
+    return { correct, heartCorrect, total, points, maxPoints };
   };
 
   if (loading) {
@@ -1255,6 +1291,7 @@ const dismissHeartTip = () => {
                     <tr className="text-left text-xs text-amber-600 uppercase tracking-wide bg-amber-50">
                       <th className="px-4 py-3"></th>
                       <th className="px-4 py-3">Name</th>
+                      <th className="px-4 py-3 text-center">Points</th>
                       <th className="px-4 py-3 text-center">Picks</th>
                       <th className="px-4 py-3 text-center">❤️</th>
                     </tr>
@@ -1264,6 +1301,10 @@ const dismissHeartTip = () => {
                       <tr key={entry.id} className={`border-t border-amber-50 ${index === 0 ? 'bg-amber-50/50' : ''}`}>
                         <td className="px-4 py-4 text-amber-400 font-bold">{index + 1}.</td>
                         <td className="px-4 py-4 font-medium text-amber-900">{entry.name}</td>
+                        <td className="px-4 py-4 text-center">
+                          <span className="font-bold text-amber-900">{entry.points}</span>
+                          <span className="text-amber-400 text-xs"> pts</span>
+                        </td>
                         <td className="px-4 py-4 text-center">
                           <span className="font-bold text-amber-900">{entry.correct}</span>
                           <span className="text-amber-400">/{entry.total}</span>
