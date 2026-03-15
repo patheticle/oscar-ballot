@@ -372,10 +372,11 @@ const dismissHeartTip = () => {
 
   // Save ballot to sharedBallots list (ballots shared with me)
   const saveToSharedBallots = (id, name) => {
-    // Don't save if it's one of my own ballots - read directly from localStorage to avoid stale state
+    // Read directly from localStorage to avoid stale state for both lists
     const myBallotsFromStorage = JSON.parse(localStorage.getItem('myBallots') || '[]');
     if (myBallotsFromStorage.some(b => b.id === id)) return;
-    const existing = sharedBallots.filter(b => b.id !== id);
+    const sharedFromStorage = JSON.parse(localStorage.getItem('sharedBallots') || '[]');
+    const existing = sharedFromStorage.filter(b => b.id !== id);
     const updated = [...existing, { id, name, savedAt: new Date().toISOString() }];
     setSharedBallots(updated);
     localStorage.setItem('sharedBallots', JSON.stringify(updated));
